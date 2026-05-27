@@ -1,6 +1,5 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
 
 st.set_page_config(
     page_title="프로보 에너지 모니터",
@@ -9,438 +8,305 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── 전역 상수 ──────────────────────────────────────────────
-BATTERY_SPECS = {
-    "AA": {"capacity_mah": 2500, "label": "AA (오래감)", "color": "#3b82f6"},
-    "AAA": {"capacity_mah": 1200, "label": "AAA (가벼움)", "color": "#8b5cf6"},
-}
-CELLS_PER_PACK = 4
-ROBOT_VOLTAGE = 6.0
+st.markdown("""
+<style>
+  .block-container{padding-top:1.2rem;padding-bottom:1rem;max-width:1080px}
+  h1{font-size:1.4rem!important;font-weight:500!important}
+  footer{visibility:hidden}
+</style>
+""", unsafe_allow_html=True)
 
-MOTOR_SPECS = {
-    "m120": {"current_a": 0.4, "label": "120 모터", "color": "#22c55e", "icon": "⚡"},
-    "m300": {"current_a": 0.8, "label": "300 모터", "color": "#ef4444", "icon": "🔥"},
-    "servo": {"current_a": 0.2, "label": "서보 모터", "color": "#3b82f6", "icon": "🎯"},
-}
+st.markdown("## 🤖 프로보 에너지 과부하 모니터")
+st.caption("3D 블록을 클릭해 모터를 설치하고, 실시간 전력·작동 시간을 확인하세요.")
 
-SLOT_COUNT = 8  # 로봇에 설치 가능한 최대 슬롯 수
-DANGER_RATIO = 0.70
-WARNING_RATIO = 0.40
-
-
-# ── 계산 함수 ──────────────────────────────────────────────
-def calc_stats(installed_motors, battery_type, pack_count, max_power_w):
-    spec = BATTERY_SPECS[battery_type]
-    capacity_mah = spec["capacity_mah"] * pack_count
-
-    current_a = sum(
-        MOTOR_SPECS[m]["current_a"] for m in installed_motors if m is not None
-    )
-    power_w = current_a * ROBOT_VOLTAGE
-
-    runtime_min = None
-    if current_a > 0:
-        runtime_min = (capacity_mah / 1000 / current_a) * 60
-
-    ratio = power_w / max_power_w if max_power_w > 0 else 0
-    if ratio >= DANGER_RATIO:
-        status = "danger"
-    elif ratio >= WARNING_RATIO:
-        status = "warning"
-    else:
-        status = "safe"
-
-    motor_counts = {"m120": 0, "m300": 0, "servo": 0}
-    for m in installed_motors:
-        if m is not None:
-            motor_counts[m] += 1
-
-    return {
-        "capacity_mah": capacity_mah,
-        "current_a": current_a,
-        "power_w": power_w,
-        "runtime_min": runtime_min,
-        "status": status,
-        "ratio": ratio,
-        "motor_counts": motor_counts,
-    }
-
-
-# ── 세션 상태 초기화 ────────────────────────────────────────
-if "installed" not in st.session_state:
-    st.session_state.installed = [None] * SLOT_COUNT
-if "battery_type" not in st.session_state:
-    st.session_state.battery_type = "AA"
-if "pack_count" not in st.session_state:
-    st.session_state.pack_count = 1
-if "max_power_w" not in st.session_state:
-    st.session_state.max_power_w = 15
-
-
-# ── 드래그앤드롭 컴포넌트 HTML ──────────────────────────────
-def build_drag_drop_component(installed, motor_specs):
-    installed_json = json.dumps(installed)
-    motor_json = json.dumps(motor_specs)
-
-    html = f"""
+components.html("""
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: transparent;
-    color: #1e293b;
-    user-select: none;
-  }}
-  .root {{ display: flex; flex-direction: column; gap: 20px; padding: 4px; }}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#1e293b;min-height:100vh}
 
-  /* ── 팔레트 ── */
-  .palette-label {{
-    font-size: 11px; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; color: #64748b; margin-bottom: 8px;
-  }}
-  .palette {{
-    display: flex; gap: 12px; flex-wrap: wrap;
-  }}
-  .motor-chip {{
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    padding: 10px 16px; border-radius: 12px;
-    border: 2px solid transparent; cursor: grab;
-    font-size: 12px; font-weight: 600; min-width: 80px;
-    transition: transform .15s, box-shadow .15s;
-    position: relative;
-  }}
-  .motor-chip:active {{ cursor: grabbing; }}
-  .motor-chip:hover {{ transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.15); }}
-  .motor-chip .chip-icon {{ font-size: 22px; }}
-  .motor-chip .chip-current {{ font-size: 10px; font-weight: 400; opacity: .75; }}
+.app{display:grid;grid-template-columns:1fr 300px;min-height:580px;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0}
 
-  .chip-m120  {{ background: #dcfce7; border-color: #86efac; color: #15803d; }}
-  .chip-m300  {{ background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }}
-  .chip-servo {{ background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }}
+.board-panel{padding:20px;background:#fff;border-right:1px solid #e2e8f0}
+.panel-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:12px}
 
-  /* ── 로봇 슬롯 ── */
-  .robot-label {{
-    font-size: 11px; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; color: #64748b; margin-bottom: 8px;
-    display: flex; align-items: center; justify-content: space-between;
-  }}
-  .robot-label span {{ font-weight: 400; font-size: 10px; color: #94a3b8; text-transform: none; letter-spacing: 0; }}
-  .slots-grid {{
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-  }}
-  .slot {{
-    height: 80px; border-radius: 12px;
-    border: 2px dashed #cbd5e1;
-    background: #f8fafc;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 4px; font-size: 11px; color: #94a3b8;
-    transition: border-color .15s, background .15s;
-    position: relative; cursor: default;
-  }}
-  .slot.drag-over {{
-    border-color: #6366f1; background: #eef2ff;
-  }}
-  .slot.occupied {{
-    border-style: solid; cursor: pointer;
-  }}
-  .slot.occupied:hover::after {{
-    content: "✕";
-    position: absolute; top: 4px; right: 6px;
-    font-size: 12px; color: #94a3b8; line-height: 1;
-  }}
-  .slot-motor-icon {{ font-size: 24px; }}
-  .slot-motor-label {{ font-size: 10px; font-weight: 600; }}
-  .slot-num {{ font-size: 10px; color: #cbd5e1; }}
+canvas{display:block;width:100%;cursor:pointer;border-radius:12px;background:#f1f5f9}
 
-  .slot-m120  {{ background: #f0fdf4; border-color: #86efac; }}
-  .slot-m300  {{ background: #fff1f2; border-color: #fca5a5; }}
-  .slot-servo {{ background: #eff6ff; border-color: #93c5fd; }}
+.palette{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.motor-btn{display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:#334155;transition:all .15s;white-space:nowrap}
+.motor-btn:hover{background:#f8fafc;transform:translateY(-1px)}
+.motor-btn.sel{border-width:2px;background:#fafafe}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.amps-badge{font-size:10px;color:#94a3b8;font-weight:400}
+.hint{font-size:11px;color:#94a3b8;margin-top:8px;line-height:1.5}
+
+.stats-panel{padding:18px;background:#fafafe;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+
+.status-pill{padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;border-left:3px solid;transition:all .4s}
+.s-safe  {background:#f0fdf4;color:#15803d;border-color:#22c55e}
+.s-warn  {background:#fffbeb;color:#92400e;border-color:#f59e0b}
+.s-danger{background:#fff1f2;color:#be123c;border-color:#ef4444}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sc{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.sl{font-size:10px;color:#94a3b8;margin-bottom:3px}
+.sv{font-size:19px;font-weight:600;color:#0f172a;line-height:1}
+.su{font-size:10px;color:#94a3b8;font-weight:400}
+
+.gs{display:flex;flex-direction:column;gap:4px}
+.gh{display:flex;justify-content:space-between;font-size:11px;color:#64748b}
+.gt{height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+.gf{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1),background .4s}
+
+.row{display:flex;align-items:center;gap:8px;font-size:11px;color:#64748b}
+.row input[type=range]{flex:1;accent-color:#6366f1;cursor:pointer}
+.row b{min-width:28px;text-align:right;color:#1e293b;font-weight:600}
+
+.time-box{text-align:center;padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+.tn{font-size:28px;font-weight:700;color:#1e293b;line-height:1}
+.tl{font-size:10px;color:#94a3b8;margin-top:3px}
+
+.bat-row{display:flex;gap:6px}
+.bb{flex:1;padding:7px 4px;border:1.5px solid #e2e8f0;border-radius:9px;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:#64748b;transition:all .15s}
+.bb:hover{background:#f1f5f9}
+.bb.on{border-color:#6366f1;background:#eef2ff;color:#4338ca}
+
+.legend{display:flex;flex-direction:column;gap:0}
+.lr{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid #f1f5f9}
+.lr:last-child{border-bottom:none}
+.ll{display:flex;align-items:center;gap:6px;color:#64748b}
+.lv{font-weight:600;color:#0f172a}
+
+.reset{width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;font-size:11px;font-weight:500;cursor:pointer;color:#64748b;transition:all .15s}
+.reset:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
 </style>
 </head>
 <body>
-<div class="root">
-
-  <div>
-    <div class="palette-label">모터 팔레트 — 슬롯으로 드래그하세요</div>
-    <div class="palette" id="palette">
-      <div class="motor-chip chip-m120"
-           draggable="true" data-motor="m120"
-           ondragstart="onDragStart(event)">
-        <span class="chip-icon">⚡</span>
-        <span>120 모터</span>
-        <span class="chip-current">0.4 A</span>
-      </div>
-      <div class="motor-chip chip-m300"
-           draggable="true" data-motor="m300"
-           ondragstart="onDragStart(event)">
-        <span class="chip-icon">🔥</span>
-        <span>300 모터</span>
-        <span class="chip-current">0.8 A</span>
-      </div>
-      <div class="motor-chip chip-servo"
-           draggable="true" data-motor="servo"
-           ondragstart="onDragStart(event)">
-        <span class="chip-icon">🎯</span>
-        <span>서보 모터</span>
-        <span class="chip-current">0.2 A</span>
-      </div>
+<div class="app">
+  <div class="board-panel">
+    <div class="panel-title">로봇 보드 — 셀을 클릭해 블록 설치 / 재클릭으로 제거</div>
+    <canvas id="c" height="340"></canvas>
+    <div class="palette">
+      <button class="motor-btn sel" id="btn-m120" onclick="sel('m120')">
+        <span class="dot" style="background:#22c55e"></span>120 모터<span class="amps-badge">0.4 A</span>
+      </button>
+      <button class="motor-btn" id="btn-m300" onclick="sel('m300')">
+        <span class="dot" style="background:#ef4444"></span>300 모터<span class="amps-badge">0.8 A</span>
+      </button>
+      <button class="motor-btn" id="btn-servo" onclick="sel('servo')">
+        <span class="dot" style="background:#3b82f6"></span>서보 모터<span class="amps-badge">0.2 A</span>
+      </button>
     </div>
+    <div class="hint">모터를 선택한 뒤 보드 셀을 클릭하면 3D 블록이 설치됩니다.<br>같은 셀을 다시 클릭하면 제거됩니다.</div>
   </div>
 
-  <div>
-    <div class="robot-label">
-      로봇 슬롯 (최대 8개)
-      <span>슬롯을 클릭하면 제거</span>
-    </div>
-    <div class="slots-grid" id="slots-grid"></div>
-  </div>
+  <div class="stats-panel">
+    <div id="sp" class="status-pill s-safe">✓ 안전 — 정상 작동 중</div>
 
+    <div class="stat-grid">
+      <div class="sc"><div class="sl">소모 전류</div><div class="sv"><span id="sc">0.00</span><span class="su"> A</span></div></div>
+      <div class="sc"><div class="sl">소모 전력</div><div class="sv"><span id="sp2">0.0</span><span class="su"> W</span></div></div>
+      <div class="sc"><div class="sl">배터리 용량</div><div class="sv"><span id="scap">2500</span><span class="su"> mAh</span></div></div>
+      <div class="sc"><div class="sl">설치된 모터</div><div class="sv"><span id="scnt">0</span><span class="su"> 개</span></div></div>
+    </div>
+
+    <div class="gs">
+      <div class="gh"><span>전력 부하율</span><span id="gpct">0%</span></div>
+      <div class="gt"><div class="gf" id="gfill" style="width:0%;background:#22c55e"></div></div>
+    </div>
+
+    <div class="row">
+      <span>최대치</span>
+      <input type="range" min="1" max="60" value="15" step="1" id="maxw" oninput="upd()">
+      <b id="mv">15</b><span>W</span>
+    </div>
+
+    <div class="time-box">
+      <div class="tn" id="st">—</div>
+      <div class="tl">예상 작동 시간</div>
+    </div>
+
+    <div>
+      <div class="bat-row" style="margin-bottom:8px">
+        <button class="bb on" id="bat-AA" onclick="setBat('AA')">AA  2500 mAh</button>
+        <button class="bb" id="bat-AAA" onclick="setBat('AAA')">AAA  1200 mAh</button>
+      </div>
+      <div class="row">
+        <span>팩 수</span>
+        <input type="range" min="1" max="10" value="1" step="1" id="packs" oninput="upd()">
+        <b id="pv">1</b><span>팩</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="lr"><span class="ll"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>120 모터</span><span class="lv" id="l0">0개 — 0.0A</span></div>
+      <div class="lr"><span class="ll"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>300 모터</span><span class="lv" id="l1">0개 — 0.0A</span></div>
+      <div class="lr"><span class="ll"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>서보 모터</span><span class="lv" id="l2">0개 — 0.0A</span></div>
+    </div>
+
+    <button class="reset" onclick="resetAll()">↺ 전체 초기화</button>
+  </div>
 </div>
 
 <script>
-const MOTOR_META = {{
-  m120:  {{ label: "120 모터", icon: "⚡", cls: "slot-m120"  }},
-  m300:  {{ label: "300 모터", icon: "🔥", cls: "slot-m300"  }},
-  servo: {{ label: "서보",    icon: "🎯", cls: "slot-servo" }},
-}};
+const COLS=5,ROWS=4;
+const M={
+  m120:{label:'120',top:'#4ade80',side:'#15803d',dark:'#166534',amps:0.4,color:'#22c55e'},
+  m300:{label:'300',top:'#f87171',side:'#b91c1c',dark:'#7f1d1d',amps:0.8,color:'#ef4444'},
+  servo:{label:'SV', top:'#60a5fa',side:'#1d4ed8',dark:'#1e3a8a',amps:0.2,color:'#3b82f6'},
+};
+const BAT={AA:2500,AAA:1200};
+let grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));
+let chosen='m120',bat='AA',hov=null;
+const cv=document.getElementById('c');
+const cx=cv.getContext('2d');
 
-let installed = {installed_json};
-let dragging = null;
+function iso(c,r){
+  const W=cv.width,cW=54,cH=28,ox=W/2,oy=64;
+  return{x:ox+(c-r)*(cW/2),y:oy+(c+r)*(cH/2)};
+}
+function draw(){
+  cv.width=cv.offsetWidth*devicePixelRatio||cv.offsetWidth;
+  cx.clearRect(0,0,cv.width,cv.height);
+  const cW=54,cH=28,bH=26;
+  const gl='rgba(100,116,139,.2)';
+  for(let r=ROWS-1;r>=0;r--){
+    for(let c=COLS-1;c>=0;c--){
+      const p=iso(c,r),hw=cW/2,hh=cH/2;
+      cx.beginPath();
+      cx.moveTo(p.x,p.y-hh);cx.lineTo(p.x+hw,p.y);
+      cx.lineTo(p.x,p.y+hh);cx.lineTo(p.x-hw,p.y);
+      cx.closePath();
+      cx.fillStyle='#e2e8f0';cx.fill();
+      cx.strokeStyle=gl;cx.lineWidth=.8;cx.stroke();
+      if(hov&&hov.r===r&&hov.c===c&&!grid[r][c]){
+        cx.fillStyle='rgba(99,102,241,.2)';cx.fill();
+      }
+      cx.fillStyle='#94a3b8';cx.font='500 9px system-ui';
+      cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillText(r*COLS+c+1,p.x,p.y);
+    }
+  }
+  for(let r=ROWS-1;r>=0;r--){
+    for(let c=COLS-1;c>=0;c--){
+      const m=grid[r][c];if(!m)continue;
+      const mt=M[m],p=iso(c,r),hw=cW/2,hh=cH/2;
+      cx.beginPath();
+      cx.moveTo(p.x,p.y-hh);cx.lineTo(p.x+hw,p.y);
+      cx.lineTo(p.x,p.y+hh);cx.lineTo(p.x-hw,p.y);
+      cx.closePath();cx.fillStyle=mt.top;cx.fill();
+      cx.beginPath();
+      cx.moveTo(p.x-hw,p.y);cx.lineTo(p.x,p.y+hh);
+      cx.lineTo(p.x,p.y+hh+bH);cx.lineTo(p.x-hw,p.y+bH);
+      cx.closePath();cx.fillStyle=mt.dark;cx.fill();
+      cx.beginPath();
+      cx.moveTo(p.x+hw,p.y);cx.lineTo(p.x,p.y+hh);
+      cx.lineTo(p.x,p.y+hh+bH);cx.lineTo(p.x+hw,p.y+bH);
+      cx.closePath();cx.fillStyle=mt.side;cx.fill();
+      cx.fillStyle='rgba(255,255,255,.9)';
+      cx.font='700 9px system-ui';cx.textAlign='center';cx.textBaseline='middle';
+      cx.fillText(mt.label,p.x,p.y);
+      cx.fillStyle='rgba(255,255,255,.6)';
+      cx.font='500 8px system-ui';
+      cx.fillText(mt.amps+'A',p.x,p.y+10);
+    }
+  }
+}
+function hit(mx,my){
+  const cW=54,cH=28;let best=null,bd=999;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const p=iso(c,r),hw=cW/2,hh=cH/2;
+    const dx=mx-p.x,dy=my-p.y;
+    const u=dx/hw+dy/hh,v=-dx/hw+dy/hh;
+    if(u>=-1&&u<=1&&v>=-1&&v<=1){
+      const d=Math.abs(dx)+Math.abs(dy);
+      if(d<bd){bd=d;best={r,c};}
+    }
+  }return best;
+}
+function xy(e){
+  const rect=cv.getBoundingClientRect(),sx=cv.width/rect.width,sy=cv.height/rect.height;
+  const cl=e.touches?e.touches[0]:e;
+  return{x:(cl.clientX-rect.left)*sx,y:(cl.clientY-rect.top)*sy};
+}
+cv.addEventListener('mousemove',e=>{const{x,y}=xy(e);hov=hit(x,y);cv.style.cursor=hov?'pointer':'default';draw();});
+cv.addEventListener('mouseleave',()=>{hov=null;draw();});
+cv.addEventListener('click',e=>{
+  const{x,y}=xy(e),h=hit(x,y);if(!h)return;
+  grid[h.r][h.c]=grid[h.r][h.c]===chosen?null:chosen;
+  draw();upd();
+});
+cv.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const t=e.changedTouches[0],rect=cv.getBoundingClientRect();
+  const sx=cv.width/rect.width,sy=cv.height/rect.height;
+  const h=hit((t.clientX-rect.left)*sx,(t.clientY-rect.top)*sy);
+  if(!h)return;
+  grid[h.r][h.c]=grid[h.r][h.c]===chosen?null:chosen;
+  draw();upd();
+},{passive:false});
 
-function renderSlots() {{
-  const grid = document.getElementById('slots-grid');
-  grid.innerHTML = '';
-  for (let i = 0; i < {SLOT_COUNT}; i++) {{
-    const motor = installed[i];
-    const div = document.createElement('div');
-    div.className = 'slot' + (motor ? ' occupied ' + MOTOR_META[motor].cls : '');
-    div.dataset.index = i;
-
-    if (motor) {{
-      div.innerHTML = `
-        <span class="slot-motor-icon">${{MOTOR_META[motor].icon}}</span>
-        <span class="slot-motor-label">${{MOTOR_META[motor].label}}</span>`;
-      div.onclick = () => removeMotor(i);
-    }} else {{
-      div.innerHTML = `<span class="slot-num">슬롯 ${{i + 1}}</span>`;
-    }}
-
-    div.addEventListener('dragover', e => {{ e.preventDefault(); div.classList.add('drag-over'); }});
-    div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
-    div.addEventListener('drop', e => {{ e.preventDefault(); div.classList.remove('drag-over'); dropMotor(i); }});
-    grid.appendChild(div);
-  }}
-}}
-
-function onDragStart(e) {{
-  dragging = e.currentTarget.dataset.motor;
-}}
-
-function dropMotor(index) {{
-  if (!dragging) return;
-  installed[index] = dragging;
-  dragging = null;
-  renderSlots();
-  sendUpdate();
-}}
-
-function removeMotor(index) {{
-  installed[index] = null;
-  renderSlots();
-  sendUpdate();
-}}
-
-function sendUpdate() {{
-  window.parent.postMessage({{
-    type: "streamlit:setComponentValue",
-    value: JSON.stringify(installed)
-  }}, "*");
-}}
-
-renderSlots();
+function sel(k){
+  chosen=k;
+  Object.keys(M).forEach(id=>{
+    const b=document.getElementById('btn-'+id);
+    b.classList.toggle('sel',id===k);
+    b.style.borderColor=id===k?M[k].color:'';
+    b.style.color=id===k?M[k].color:'';
+  });
+}
+function setBat(b){
+  bat=b;
+  document.getElementById('bat-AA').className='bb'+(b==='AA'?' on':'');
+  document.getElementById('bat-AAA').className='bb'+(b==='AAA'?' on':'');
+  upd();
+}
+function resetAll(){grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));draw();upd();}
+function upd(){
+  const packs=+document.getElementById('packs').value;
+  const maxW=+document.getElementById('maxw').value;
+  document.getElementById('pv').textContent=packs;
+  document.getElementById('mv').textContent=maxW;
+  const cap=BAT[bat]*packs;
+  let cur=0,cnt=0;
+  const cts={m120:0,m300:0,servo:0};
+  grid.forEach(row=>row.forEach(m=>{if(m){cur+=M[m].amps;cnt++;cts[m]++;}}));
+  const pow=+(cur*6).toFixed(2),ratio=maxW>0?pow/maxW:0;
+  const pct=Math.min(ratio*100,100);
+  document.getElementById('sc').textContent=cur.toFixed(2);
+  document.getElementById('sp2').textContent=pow.toFixed(1);
+  document.getElementById('scap').textContent=cap.toLocaleString();
+  document.getElementById('scnt').textContent=cnt;
+  document.getElementById('gpct').textContent=Math.round(pct)+'%';
+  const gf=document.getElementById('gfill');
+  gf.style.width=pct.toFixed(1)+'%';
+  let gc,scls,stxt;
+  if(ratio>=0.7){gc='#ef4444';scls='s-danger';stxt='⚠ 위험 — 전력 과부하!';}
+  else if(ratio>=0.4){gc='#f59e0b';scls='s-warn';stxt='△ 주의 — 부하 높음';}
+  else{gc='#22c55e';scls='s-safe';stxt='✓ 안전 — 정상 작동 중';}
+  gf.style.background=gc;
+  const pill=document.getElementById('sp');
+  pill.textContent=stxt;pill.className='status-pill '+scls;
+  if(cur>0){
+    const mins=cap/1000/cur*60;
+    document.getElementById('st').textContent=mins>=60?Math.floor(mins/60)+'h '+Math.floor(mins%60)+'m':mins.toFixed(1)+' 분';
+  } else document.getElementById('st').textContent='—';
+  const lids=['l0','l1','l2'],keys=['m120','m300','servo'];
+  keys.forEach((k,i)=>{
+    document.getElementById(lids[i]).textContent=cts[k]+'개 — '+(cts[k]*M[k].amps).toFixed(1)+'A';
+  });
+}
+sel('m120');
+window.addEventListener('resize',()=>{draw();});
+setTimeout(()=>{draw();upd();},60);
 </script>
 </body>
 </html>
-"""
-    return html
+""", height=620, scrolling=False)
 
-
-# ── 레이아웃 ────────────────────────────────────────────────
-st.markdown("""
-<style>
-  .block-container { padding-top: 1.5rem; max-width: 1100px; }
-  h1 { font-size: 1.6rem !important; }
-  .stMetric label { font-size: 0.75rem !important; }
-  .stMetric [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("## 🤖 프로보 테크닉 — 에너지 과부하 모니터")
-
-# ── 두 컬럼 ──────────────────────────────────────────────
-col_left, col_right = st.columns([6, 4], gap="large")
-
-# ── 왼쪽: 드래그앤드롭 ──────────────────────────────────
-with col_left:
-    st.markdown("#### 모터 배치판")
-    component_value = components.html(
-        build_drag_drop_component(
-            st.session_state.installed,
-            MOTOR_SPECS,
-        ),
-        height=320,
-        scrolling=False,
-    )
-
-    # postMessage → session_state 동기화
-    # (Streamlit custom component 방식으로 처리)
-    st.markdown("""
-    <script>
-    window.addEventListener("message", function(e) {
-        if (e.data && e.data.type === "streamlit:setComponentValue") {
-            window.parent.postMessage(e.data, "*");
-        }
-    });
-    </script>
-    """, unsafe_allow_html=True)
-
-    st.caption("💡 팔레트에서 모터를 드래그해 슬롯에 놓으세요. 슬롯을 클릭하면 제거됩니다.")
-
-    st.markdown("---")
-
-    # ── 수동 편집 폼 (드래그앤드롭 보조) ──
-    st.markdown("**⌨️ 직접 입력으로도 설정 가능**")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        n_m120 = st.number_input("⚡ 120 모터", 0, 8, key="n_m120",
-                                 value=st.session_state.installed.count("m120"))
-    with c2:
-        n_m300 = st.number_input("🔥 300 모터", 0, 8, key="n_m300",
-                                 value=st.session_state.installed.count("m300"))
-    with c3:
-        n_servo = st.number_input("🎯 서보 모터", 0, 8, key="n_servo",
-                                  value=st.session_state.installed.count("servo"))
-
-    if st.button("🔄 입력값으로 슬롯 업데이트", use_container_width=True):
-        total = n_m120 + n_m300 + n_servo
-        if total > SLOT_COUNT:
-            st.error(f"슬롯은 최대 {SLOT_COUNT}개입니다. 현재 {total}개 → 줄여주세요.")
-        else:
-            motors = (["m120"] * n_m120 + ["m300"] * n_m300 +
-                      ["servo"] * n_servo + [None] * SLOT_COUNT)
-            st.session_state.installed = motors[:SLOT_COUNT]
-            st.rerun()
-
-
-# ── 오른쪽: 설정 + 결과 ──────────────────────────────────
-with col_right:
-    st.markdown("#### 배터리 설정")
-
-    bat_col1, bat_col2 = st.columns(2)
-    with bat_col1:
-        battery_type = st.selectbox(
-            "종류",
-            options=list(BATTERY_SPECS.keys()),
-            format_func=lambda k: BATTERY_SPECS[k]["label"],
-            index=0 if st.session_state.battery_type == "AA" else 1,
-        )
-        st.session_state.battery_type = battery_type
-
-    with bat_col2:
-        pack_count = st.number_input("팩 수 (1팩=4개)", 1, 10,
-                                     value=st.session_state.pack_count)
-        st.session_state.pack_count = pack_count
-
-    max_power_w = st.slider(
-        "⚙️ 게이지 최대치 (W)", 1, 100,
-        value=st.session_state.max_power_w,
-    )
-    st.session_state.max_power_w = max_power_w
-
-    st.markdown("---")
-
-    # ── 계산 결과 ──────────────────────────────────────
-    stats = calc_stats(
-        st.session_state.installed,
-        st.session_state.battery_type,
-        st.session_state.pack_count,
-        max_power_w,
-    )
-
-    STATUS_CFG = {
-        "safe":    {"emoji": "✅", "color": "#16a34a", "label": "안전",  "bg": "#f0fdf4"},
-        "warning": {"emoji": "⚠️", "color": "#d97706", "label": "주의",  "bg": "#fffbeb"},
-        "danger":  {"emoji": "🚨", "color": "#dc2626", "label": "위험!","bg": "#fff1f2"},
-    }
-    cfg = STATUS_CFG[stats["status"]]
-
-    st.markdown(f"""
-    <div style="background:{cfg['bg']}; border-left:4px solid {cfg['color']};
-                border-radius:8px; padding:12px 16px; margin-bottom:16px;">
-      <span style="color:{cfg['color']}; font-weight:700; font-size:15px;">
-        {cfg['emoji']} {cfg['label']}
-      </span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 메트릭 카드
-    m1, m2 = st.columns(2)
-    m1.metric("소모 전류", f"{stats['current_a']:.2f} A")
-    m2.metric("소모 전력", f"{stats['power_w']:.1f} W")
-
-    m3, m4 = st.columns(2)
-    m3.metric("배터리 용량", f"{stats['capacity_mah']:,} mAh")
-
-    if stats["runtime_min"] is not None:
-        if stats["runtime_min"] >= 60:
-            h, m_rem = divmod(int(stats["runtime_min"]), 60)
-            time_str = f"{h}시간 {m_rem}분"
-        else:
-            time_str = f"{stats['runtime_min']:.1f} 분"
-    else:
-        time_str = "—"
-    m4.metric("예상 작동 시간", time_str)
-
-    # 전력 게이지
-    pct = min(stats["ratio"] * 100, 100)
-    bar_color = cfg["color"]
-    st.markdown(f"""
-    <div style="margin-top:12px;">
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:4px;">
-        <span>전력 부하</span>
-        <span>{stats['power_w']:.1f} / {max_power_w} W ({pct:.0f}%)</span>
-      </div>
-      <div style="background:#e2e8f0; border-radius:99px; height:10px;">
-        <div style="width:{pct:.1f}%; background:{bar_color};
-                    border-radius:99px; height:100%;
-                    transition: width .4s ease;"></div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 모터별 분류
-    st.markdown("---")
-    st.markdown("**현재 설치된 모터**")
-    counts = stats["motor_counts"]
-    for key, spec in MOTOR_SPECS.items():
-        cnt = counts[key]
-        cur = cnt * spec["current_a"]
-        if cnt > 0:
-            st.markdown(
-                f"- {spec['icon']} **{spec['label']}** × {cnt} → {cur:.2f} A"
-            )
-    if all(v == 0 for v in counts.values()):
-        st.caption("슬롯에 모터가 없습니다.")
-
-    # 초기화 버튼
-    st.markdown("")
-    if st.button("🗑️ 전체 슬롯 초기화", use_container_width=True, type="secondary"):
-        st.session_state.installed = [None] * SLOT_COUNT
-        st.rerun()
+st.markdown("---")
+st.caption("⚡ 전압: 6V 기준 | 배터리 병렬 연결 | 위험 기준: 최대치의 70% 이상")
