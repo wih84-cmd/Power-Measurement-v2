@@ -1,30 +1,30 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="프로보 에너지 모니터 2D", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="프로보 에너지 모니터 2D Pro", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
 
-# 깔끔한 대시보드 스타일 지정
+# 대시보드 인터페이스 최적화 스타일링
 st.markdown("""
 <style>
     .block-container {padding-top: 1.5rem; max-width: 1200px}
     footer {visibility: hidden}
-    div[data-testid="stDecoration"] {background-image: linear-gradient(90deg, #3b82f6, #06b6d4);}
+    div[data-testid="stDecoration"] {background-image: linear-gradient(90deg, #2563eb, #06b6d4);}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터")
-st.caption("아래의 모터 블록을 마우스로 드래그하여 2D 보드의 빈 칸에 드롭하세요. (배치 후 클릭하면 제거, 과부하 70% 이상 시 차단 고장)")
+st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터 (v2.0 Pro)")
+st.caption("하단의 모터 소스 블록을 마우스로 드래그하여 상단 그리드 배치 보드에 놓으세요. 배치된 블록을 클릭하면 신속하게 제거됩니다.")
 
 components.html("""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;-webkit-user-select:none;user-select:none}
-.app{display:grid;grid-template-columns:1fr 310px;gap:20px;background:#ffffff;border-radius:24px;padding:20px;box-shadow:0 20px 40px -15px rgba(15,23,42,0.08);border:1px solid #e2e8f0;height:670px}
+.app{display:grid;grid-template-columns:1fr 320px;gap:20px;background:#ffffff;border-radius:24px;padding:20px;box-shadow:0 20px 40px -15px rgba(15,23,42,0.08);border:1px solid #e2e8f0;height:670px}
 .left{display:flex;flex-direction:column;background:#fdfdfd;border-radius:18px;border:1px solid #f1f5f9;padding:16px;position:relative}
 .right{display:flex;flex-direction:column;gap:12px;padding:4px;overflow-y:auto;overflow-x:hidden}
 .sec{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#475569;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.sec::before{content:'';display:inline-block;width:6px;height:6px;background:#3b82f6;border-radius:50%}
+.sec::before{content:'';display:inline-block;width:6px;height:6px;background:#2563eb;border-radius:50%}
 canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;background:#f1f5f9;min-height:360px}
 .palette-title{font-size:11px;font-weight:700;color:#64748b;margin:12px 0 4px 4px;display:flex;align-items:center;gap:4px}
 .palette{display:flex;gap:10px;background:#e2e8f0;padding:10px;border-radius:14px;border:1px dashed #cbd5e1}
@@ -49,12 +49,12 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
 .gt{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;position:relative}
 .gf{height:100%;border-radius:99px;transition:width .2s ease,background .3s}
 .row{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:#475569}
-.row input[type=range]{flex:1;accent-color:#3b82f6;cursor:pointer;height:4px}
+.row input[type=range]{flex:1;accent-color:#2563eb;cursor:pointer;height:4px}
 .row b{min-width:28px;text-align:right;color:#0f172a;font-weight:800;font-size:12px}
 .bat-row{display:flex;gap:6px}
 .bb{flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;font-size:11px;font-weight:700;cursor:pointer;color:#475569;transition:all .15s}
 .bb:hover{background:#f8fafc}
-.bb.on{border-color:#3b82f6;background:#eff6ff;color:#1d4ed8;box-shadow:0 0 0 1px #1d4ed8}
+.bb.on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;box-shadow:0 0 0 1px #1d4ed8}
 .leg{display:flex;flex-direction:column;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:4px 10px}
 .lr{display:flex;align-items:center;justify-content:space-between;font-size:11px;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .lr:last-child{border-bottom:none}
@@ -73,14 +73,14 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
 <div class="app" id="app">
   <div class="left">
     <div class="sec">로봇 2D 평면 그리드 배치 보드</div>
-    <canvas id="cv" dropzone="copy"></canvas>
+    <canvas id="cv"></canvas>
     <div class="palette-title">📦 모터 소스 블록 (드래그하여 배치)</div>
     <div class="palette">
       <div class="mcard" draggable="true" id="m120" ondragstart="ds(event)"><span class="mdot" style="background:#10b981"></span><span>120 모터</span><span class="mamp">0.4A</span></div>
       <div class="mcard" draggable="true" id="m300" ondragstart="ds(event)"><span class="mdot" style="background:#ef4444"></span><span>300 모터</span><span class="mamp">0.8A</span></div>
       <div class="mcard" draggable="true" id="servo" ondragstart="ds(event)"><span class="mdot" style="background:#3b82f6"></span><span>서보 모터</span><span class="mamp">0.2A</span></div>
     </div>
-    <div class="hint">💡 <b>2D 드롭:</b> 원하는 모터를 보드 칸 안에 놓으세요. 배치된 원형 블록을 <b>클릭</b>하면 제거됩니다.</div>
+    <div class="hint">💡 <b>2D 드롭 가이드:</b> 블록을 끌어다 보드 칸에 놓으세요. 배치된 원형 블록을 <b>클릭</b>하면 즉시 제거됩니다.</div>
   </div>
   <div class="right">
     <div id="sbar" class="sbar ss">✓ 안전 — 정상 작동 중</div>
@@ -117,7 +117,7 @@ const COLS=5,ROWS=4;
 const MT={
   m120:{label:'M120',amps:0.4,bg:'#e6f4ea',border:'#10b981',text:'#137333'},
   m300:{label:'M300',amps:0.8,bg:'#fce8e6',border:'#ef4444',text:'#c5221f'},
-  servo:{label:'SVO',amps:0.2,bg:'#e8f0fe',border:#3b82f6',text:'#1a73e8'},
+  servo:{label:'SVO',amps:0.2,bg:'#e8f0fe',border:'#3b82f6',text:'#1a73e8'},
 };
 const BAT={AA:2500,AAA:1200};
 let grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));
@@ -133,20 +133,14 @@ const tc=document.getElementById('tc');
 const tx=tc.getContext('2d');
 let animFrame=null;
 
-// 깔끔한 정탑뷰 2D 평면 그리드 좌표 매핑 계산기
 function get2DCellRect(col,row,W,H){
   const padding=10;
-  const boardW=W-padding*2, boardH=H-padding*2;
+  const boardW=W-padding*2;
+  const boardH=H-padding*2;
   const cellW=boardW/COLS, cellH=boardH/ROWS;
-  return {
-    x:padding+col*cellW,
-    y:padding+row*cellH,
-    w:cellW,
-    h:cellH
-  };
+  return { x:padding+col*cellW, y:padding+row*cellH, w:cellW, h:cellH };
 }
 
-// 2D 전용 원형 모터 블록 및 회전축 애니메이션 드로잉
 function draw2DMotor(cx2,rect,m,isHov,scale){
   const cxz=rect.x+rect.w/2;
   const cyz=rect.y+rect.h/2;
@@ -156,7 +150,6 @@ function draw2DMotor(cx2,rect,m,isHov,scale){
   if(scale<=0.01) return;
   
   cx2.save();
-  // 기본 원형 모터 외형 본체 구조 선언
   cx2.beginPath();
   cx2.arc(cxz,cyz,r,0,Math.PI*2);
   cx2.fillStyle=broken?'#fee2e2':m.bg;
@@ -165,14 +158,12 @@ function draw2DMotor(cx2,rect,m,isHov,scale){
   cx2.lineWidth=isHov?3:2;
   cx2.stroke();
   
-  // 모터 내부 가이드 링
   cx2.beginPath();
   cx2.arc(cxz,cyz,r*0.65,0,Math.PI*2);
   cx2.strokeStyle=broken?'rgba(239,64,64,0.2)':'rgba(0,0,0,0.06)';
   cx2.lineWidth=1.5;
   cx2.stroke();
 
-  // 회전하는 모터 샤프트 축 바(Bar) 연출
   cx2.save();
   cx2.translate(cxz,cyz);
   if(!broken && getRawPow()>0){
@@ -185,21 +176,18 @@ function draw2DMotor(cx2,rect,m,isHov,scale){
   cx2.lineWidth=2.5;
   cx2.stroke();
   
-  // 중앙 코어 피벗 점
   cx2.beginPath();
   cx2.arc(0,0,r*0.15,0,Math.PI*2);
   cx2.fillStyle='#334155';
   cx2.fill();
   cx2.restore();
   
-  // 상단 텍스트 라벨 마킹
   cx2.fillStyle=broken?'#b91c1c':m.text;
   cx2.font='bold '+Math.round(maxR*0.42)+'px system-ui';
   cx2.textAlign='center';
   cx2.textBaseline='middle';
   cx2.fillText(m.label,cxz,cyz-r*0.45);
   
-  // 하단 스펙 단위 표기
   cx2.fillStyle='#64748b';
   cx2.font='600 '+Math.round(maxR*0.3)+'px system-ui';
   cx2.fillText((m.amps)+'A',cxz,cyz+r*0.45);
@@ -214,16 +202,15 @@ function draw2DMotor(cx2,rect,m,isHov,scale){
 
 function getRawPow(){
   let c=0;grid.forEach(r=>r.forEach(m=>{if(m)c+=MT[m].amps;}));
-  return c*6;
+  return c*6; // 6V 가상 전압 기준 연산
 }
 
 function getPow(){
   let base=getRawPow();
   if(base===0)return 0;
-  return +(base + liveNoise).toFixed(2);
+  return Math.max(0, +(base + liveNoise).toFixed(2));
 }
 
-// 실시간 2D 화면 프레임 갱신 기믹 (과부하 스파크 입자 가미)
 function drawBoard(){
   const W=cv.offsetWidth*devicePixelRatio||430;
   const H=cv.offsetHeight*devicePixelRatio||370;
@@ -235,7 +222,6 @@ function drawBoard(){
     shaftAngle += 0.08;
   }
 
-  // 2D 스파크 파티클 연산 엔진
   if(broken && Math.random()<0.35){
     particles.push({
       x:Math.random()*W,y:Math.random()*H,
@@ -250,11 +236,9 @@ function drawBoard(){
     if(p.alpha<=0)particles.splice(idx,1);
   });
 
-  // 1단계: 2D 사각 격자 타일 베이스 라인 드로잉
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const rect=get2DCellRect(c,r,W,H);
-      
       cx.fillStyle=(r+c)%2===0?'#ffffff':'#f8fafc';
       cx.fillRect(rect.x,rect.y,rect.w,rect.h);
       
@@ -263,11 +247,10 @@ function drawBoard(){
       cx.strokeRect(rect.x,rect.y,rect.w,rect.h);
       
       if(hov && hov.r===r && hov.c===c && !grid[r][c]){
-        cx.fillStyle='rgba(59,130,246,0.1)';
+        cx.fillStyle='rgba(37,99,235,0.08)';
         cx.fillRect(rect.x+2,rect.y+2,rect.w-4,rect.h-4);
       }
       
-      // 넘버링 마크 가이드라인
       if(!grid[r][c]){
         cx.fillStyle='#cbd5e1';
         cx.font='700 14px system-ui';
@@ -277,7 +260,6 @@ function drawBoard(){
     }
   }
   
-  // 2단계: 배치된 2D 원형 컴포넌트 순차 오버레이
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const m=grid[r][c];
@@ -305,20 +287,39 @@ function hit(mx,my){
   return null;
 }
 
-function xy(e){
-  const rect=cv.getBoundingClientRect(),sx=cv.width/rect.width,sy=cv.height/rect.height;
-  const cl=e.touches?e.touches[0]:e;
-  return{x:(cl.clientX-rect.left)*sx,y:(cl.clientY-rect.top)*sy};
+function xy(e) {
+  const rect = cv.getBoundingClientRect();
+  const sx = cv.width / rect.width;
+  const sy = cv.height / rect.height;
+  const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+  const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+  return {
+    x: (clientX - rect.left) * sx,
+    y: (clientY - rect.top) * sy
+  };
 }
 
-// HTML5 드래그 앤 드롭 파이프라인 명세 설정
-function ds(e){ dragID = e.target.id; }
-cv.addEventListener('dragover',e=>{e.preventDefault();const p=xy(e);hov=hit(p.x,p.y);});
+// 드래그 앤 드롭 규격 준수 설정 (데이터 세팅 명시화)
+function ds(e){ 
+  dragID = e.target.id; 
+  if(e.dataTransfer) {
+    e.dataTransfer.setData('text/plain', e.target.id);
+  }
+}
+
+cv.addEventListener('dragover',e=>{
+  e.preventDefault();
+  const p=xy(e);
+  hov=hit(p.x,p.y);
+});
 cv.addEventListener('dragleave',()=>{hov=null;});
 cv.addEventListener('drop',e=>{
   e.preventDefault();
   const p=xy(e),h=hit(p.x,p.y);
-  if(h && dragID && !grid[h.r][h.c]){ grid[h.r][h.c]=dragID; upd(); }
+  if(h && dragID && !grid[h.r][h.c]){ 
+    grid[h.r][h.c]=dragID; 
+    upd(); 
+  }
   hov=null;
 });
 
@@ -333,21 +334,33 @@ cv.addEventListener('click',e=>{
 function setBat(b){bat=b;document.getElementById('bat-AA').className='bb'+(b==='AA'?' on':'');document.getElementById('bat-AAA').className='bb'+(b==='AAA'?' on':'');upd();}
 function resetAll(){grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));broken=false;upd();}
 
+// 작동 타이머 렌더러 예외 케이스 완벽 방어 처리
 function drawTimer(mins,maxM){
   const W=110,cx2=W/2,cy=W/2,R=42,lw=7;
   tx.clearRect(0,0,W,W);
   tx.beginPath();tx.arc(cx2,cy,R,0,Math.PI*2);
   tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;tx.stroke();
-  if(mins!==null&&maxM>0){
-    const frac=Math.min(mins/maxM,1);
-    const col=frac>0.6?'#10b981':frac>0.25?'#f59e0b':'#ef4444';
-    tx.beginPath();tx.arc(cx2,cy,R,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);
-    tx.strokeStyle=col;tx.lineWidth=lw;tx.lineCap='round';tx.stroke();
-  }
+  
   tx.textAlign='center';tx.textBaseline='middle';
-  if(mins===null){tx.fillStyle='#94a3b8';tx.font='bold 14px system-ui';tx.fillText('대기중',cx2,cy);}
-  else if(broken){tx.fillStyle='#ef4444';tx.font='bold 14px system-ui';tx.fillText('SYSTEM DOWN',cx2,cy);}
-  else if(mins>=60){
+  
+  if(mins===null || isNaN(mins) || mins<=0 || !isFinite(mins)){
+    tx.fillStyle='#94a3b8';tx.font='bold 14px system-ui';
+    tx.fillText('대기중',cx2,cy);
+    return;
+  }
+  
+  if(broken){
+    tx.fillStyle='#ef4444';tx.font='bold 12px system-ui';
+    tx.fillText('DOWN',cx2,cy);
+    return;
+  }
+
+  const frac=Math.min(mins/maxM,1);
+  const col=frac>0.6?'#10b981':frac>0.25?'#f59e0b':'#ef4444';
+  tx.beginPath();tx.arc(cx2,cy,R,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);
+  tx.strokeStyle=col;tx.lineWidth=lw;tx.lineCap='round';tx.stroke();
+
+  if(mins>=60){
     tx.fillStyle='#0f172a';tx.font='bold 13px system-ui';tx.fillText(Math.floor(mins/60)+'시간',cx2,cy-6);
     tx.font='600 10px system-ui';tx.fillStyle='#64748b';tx.fillText(Math.floor(mins%60)+'분',cx2,cy+8);
   } else {
@@ -356,27 +369,32 @@ function drawTimer(mins,maxM){
   }
 }
 
-function startAnim(){if(animFrame)return;function loop(){
-  if(getRawPow()>0 && !broken) {
-    liveNoise = Math.sin(Date.now()/120) * 0.18 + (Math.random()-0.5)*0.08;
-  } else {
-    liveNoise = 0;
-  }
-  
-  const pNow = getPow();
-  if(getRawPow()>0 && !broken){
-    document.getElementById('sp').textContent=pNow.toFixed(2);
-    document.getElementById('sc').textContent=(pNow/6).toFixed(2);
-  }
+function startAnim(){
+  if(animFrame) return;
+  function loop(){
+    if(getRawPow()>0 && !broken) {
+      liveNoise = Math.sin(Date.now()/120) * 0.12 + (Math.random()-0.5)*0.04;
+    } else {
+      liveNoise = 0;
+    }
+    
+    const pNow = getPow();
+    if(getRawPow()>0 && !broken){
+      document.getElementById('sp').textContent=pNow.toFixed(1);
+      document.getElementById('sc').textContent=(pNow/6).toFixed(2);
+    }
 
-  drawBoard();
-  animFrame=requestAnimationFrame(loop);
-}loop();}
+    drawBoard();
+    animFrame=requestAnimationFrame(loop);
+  }
+  loop();
+}
 
 function upd(){
   const packs=+document.getElementById('packs').value,maxW=+document.getElementById('maxw').value;
   document.getElementById('pv').textContent=packs;document.getElementById('mv').textContent=maxW;
   const cap=BAT[bat]*packs;let cur=0,cnt=0;const cts={m120:0,m300:0,servo:0};
+  
   grid.forEach(row=>row.forEach(m=>{if(m){cur+=MT[m].amps;cnt++;cts[m]++;}}));
   
   const pow=getRawPow(),ratio=maxW>0?pow/maxW:0,pct=Math.min(ratio*100,100);
@@ -393,9 +411,10 @@ function upd(){
   let gc,scls,stxt;
   if(ratio>=0.7){gc='#ef4444';scls='sd';stxt='❌ 과부하 차단 — 시스템 긴급 고장';}
   else if(ratio>=0.4){gc='#f59e0b';scls='sw';stxt='⚠ 경고 — 임계 부하 영역 진입';}
-  else{gc='#3b82f6';scls='ss';stxt='✓ 안전 — 실시간 전력 분배 안정화';}
+  else{gc='#2563eb';scls='ss';stxt='✓ 안전 — 실시간 전력 분배 안정화';}
   gf.style.background=gc;
   const sb=document.getElementById('sbar');sb.textContent=stxt;sb.className='sbar '+scls;
+  
   const mins=cur>0?cap/1000/cur*60:null;
   drawTimer(mins,60);
   ['m120','m300','servo'].forEach((k,i)=>{document.getElementById('l'+i).textContent=cts[k]+'개 — '+(cts[k]*MT[k].amps).toFixed(1)+'A';});
@@ -408,4 +427,4 @@ setTimeout(()=>{drawBoard();upd();},100);
 </script></body></html>""", height=710, scrolling=False)
 
 st.markdown("---")
-st.caption("⚙️ 정밀 2D 제어 계측 모듈 | 가동 중 실시간 미세 저항 및 전력 오차 시뮬레이션 가동 중")
+st.caption("⚙️ 정밀 2D 제어 계측 모듈 | 렌더링 루프 및 브라우저 드롭 보안 인터셉트 완벽 패치")
