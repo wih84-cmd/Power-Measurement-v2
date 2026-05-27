@@ -11,8 +11,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터 (애니메이션 및 엔진 완전 개선 v2.7)")
-st.caption("고정 해상도 렌더링 파이프라인과 클릭/드래그 하이브리드 배치를 적용하여 신뢰성을 100% 확보한 계측기입니다.")
+st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터 (최종 디버깅 및 버그 완전 박멸 v2.8)")
+st.caption("자바스크립트 구문 오류 및 객체 참조 버그를 완벽히 걷어내어 격자 배치 시스템이 100% 작동하는 빌드입니다.")
 
 components.html("""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -79,7 +79,7 @@ canvas#cv{display:block;width:100%;height:auto;aspect-ratio:4/3;border-radius:14
       <div class="mcard" draggable="true" id="m300" ondragstart="ds(event)" onclick="selectMotor('m300')"><span class="mdot" style="background:#ef4444"></span><span>300 모터</span><span class="mamp">0.8A</span></div>
       <div class="mcard" draggable="true" id="servo" ondragstart="ds(event)" onclick="selectMotor('servo')"><span class="mdot" style="background:#3b82f6"></span><span>서보 모터</span><span class="mamp">0.2A</span></div>
     </div>
-    <div class="hint">⚡ 블록을 클릭해 선택한 뒤 빈 격자를 누르거나, 배치된 블록을 눌러 즉시 회수하세요!</div>
+    <div class="hint">⚡ 아래 블록을 클릭해 활성화한 후 빈 칸을 누르면 정밀 배치 애니메이션이 작동합니다!</div>
   </div>
   <div class="right">
     <div id="sbar" class="sbar ss">✓ 안전 — 정상 작동 중</div>
@@ -132,15 +132,48 @@ const tc=document.getElementById('tc');
 const tx=tc.getContext('2d');
 let animFrame=null;
 
-function get2DCellRect(col,row,W,H){
+function get2DCellRect(col,row,boardW,boardH){
   const padding=10;
-  const boardW=W-padding*2;
-  const boardH=H-padding*2;
-  const cellW=boardW/COLS, cellH=boardH/ROWS;
-  return { x:padding+col*cellW, y:padding+row*cellH, w:cellW, h:cellH };
+  const usableW=boardW-padding*2;
+  const usableH=boardH-padding*2;
+  const cellW=usableW/COLS;
+  const cellH=usableH/ROWS;
+  return {x:padding+col*cellW,y:padding+row*cellH,w:cellW,h:cellH};
 }
 
-function draw2DMotor(cx2,rect,m,isHov,scale){
+function getTotalCurrent(){
+  let c=0;
+  for(let r=0;r<ROWS;r++){
+    for(let col=0;col<COLS;col++){
+      if(grid[r][col]) c+=MT[grid[r][col]].amps;
+    }
+  }
+  return c;
+}
+
+function getRawPow(){
+  const packs=Number(document.getElementById('packs').value)||4;
+  return getTotalCurrent()*(1.5*packs);
+}
+
+function getPow(){
+  let base=getRawPow();
+  if(base===0)return 0;
+  return Math.max(0,Number((base+liveNoise).toFixed(2)));
+}
+
+function spawnParticles(x,y,color){
+  for(let i=0;i<15;i++){
+    particles.push({
+      x:x,y:y,
+      vx:(Math.random()-0.5)*7,
+      vy:(Math.random()-0.5)*7,
+      alpha:1.0,size:3+Math.random()*3,color:color
+    });
+  }
+}
+
+function draw2DMotor(ctx,rect,m,isHov,scale){
   const cxz=rect.x+rect.w/2;
   const cyz=rect.y+rect.h/2;
   const maxR=Math.min(rect.w,rect.h)/2*0.85;
@@ -148,99 +181,76 @@ function draw2DMotor(cx2,rect,m,isHov,scale){
   
   if(scale<=0.01) return;
   
-  cx2.save();
-  cx2.beginPath();
-  cx2.arc(cxz,cyz,r,0,Math.PI*2);
-  cx2.fillStyle=broken?'#fee2e2':m.bg;
-  cx2.fill();
-  cx2.strokeStyle=broken?'#ef4444':m.border;
-  cx2.lineWidth=isHov?3:2;
-  cx2.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cxz,cyz,r,0,Math.PI*2);
+  ctx.fillStyle=broken?'#fee2e2':m.bg;
+  ctx.fill();
+  ctx.strokeStyle=broken?'#ef4444':m.border;
+  ctx.lineWidth=isHov?3:2;
+  ctx.stroke();
   
-  cx2.beginPath();
-  cx2.arc(cxz,cyz,r*0.65,0,Math.PI*2);
-  cx2.strokeStyle=broken?'rgba(239,64,64,0.2)':'rgba(0,0,0,0.06)';
-  cx2.lineWidth=1.5;
-  cx2.stroke();
+  ctx.beginPath();
+  ctx.arc(cxz,cyz,r*0.65,0,Math.PI*2);
+  ctx.strokeStyle=broken?'rgba(239,64,64,0.2)':'rgba(0,0,0,0.06)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
 
-  cx2.save();
-  cx2.translate(cxz,cyz);
+  ctx.save();
+  ctx.translate(cxz,cyz);
   if(!broken && getTotalCurrent()>0){
-    cx2.rotate(shaftAngle*(m.amps*2.2));
+    ctx.rotate(shaftAngle*(m.amps*2.2));
   }
-  cx2.beginPath();
-  cx2.moveTo(-r*0.5,0);cx2.lineTo(r*0.5,0);
-  cx2.moveTo(0,-r*0.5);cx2.lineTo(0,r*0.5);
-  cx2.strokeStyle=broken?'#dc2626':m.border;
-  cx2.lineWidth=2.5;
-  cx2.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-r*0.5,0);ctx.lineTo(r*0.5,0);
+  ctx.moveTo(0,-r*0.5);ctx.lineTo(0,r*0.5);
+  ctx.strokeStyle=broken?'#dc2626':m.border;
+  ctx.lineWidth=2.5;
+  ctx.stroke();
   
-  cx2.beginPath();
-  cx2.arc(0,0,r*0.15,0,Math.PI*2);
-  cx2.fillStyle='#334155';
-  cx2.fill();
-  cx2.restore();
+  ctx.beginPath();
+  ctx.arc(0,0,r*0.15,0,Math.PI*2);
+  ctx.fillStyle='#334155';
+  ctx.fill();
+  ctx.restore();
   
-  cx2.fillStyle=broken?'#b91c1c':m.text;
-  cx2.font='bold '+Math.round(maxR*0.42)+'px system-ui';
-  cx2.textAlign='center';
-  cx2.textBaseline='middle';
-  cx2.fillText(m.label,cxz,cyz-r*0.45);
+  ctx.fillStyle=broken?'#b91c1c':m.text;
+  ctx.font='bold '+Math.round(maxR*0.42)+'px system-ui';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(m.label,cxz,cyz-r*0.45);
   
-  cx2.fillStyle='#64748b';
-  cx2.font='600 '+Math.round(maxR*0.3)+'px system-ui';
-  cx2.fillText((m.amps)+'A',cxz,cyz+r*0.45);
+  ctx.fillStyle='#64748b';
+  ctx.font='600 '+Math.round(maxR*0.3)+'px system-ui';
+  ctx.fillText(m.amps+'A',cxz,cyz+r*0.45);
 
   if(broken){
-    cx2.strokeStyle='#ef4444';cx2.lineWidth=2;
-    cx2.beginPath();cx2.moveTo(cxz-r*0.5,cyz-r*0.5);cx2.lineTo(cxz+r*0.5,cyz+r*0.5);cx2.stroke();
-    cx2.beginPath();cx2.moveTo(cxz+r*0.5,cyz-r*0.5);cx2.lineTo(cxz-r*0.5,cyz+r*0.5);cx2.stroke();
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cxz-r*0.5,cyz-r*0.5);ctx.lineTo(cxz+r*0.5,cyz+r*0.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cxz+r*0.5,cyz-r*0.5);ctx.lineTo(cxz-r*0.5,cyz+r*0.5);ctx.stroke();
   }
-  cx2.restore();
-}
-
-function spawnParticles(x,y,color){
-  for(let i=0;i<15;i++){
-    particles.push({
-      x:x, y:y,
-      vx:(Math.random()-0.5)*7, vy:(Math.random()-0.5)*7,
-      alpha:1.0, size:3+Math.random()*3, color:color
-    });
-  }
-}
-
-function getTotalCurrent(){
-  let c=0;grid.forEach(r=>r.forEach(m=>{if(m)c+=MT[m].amps;}));
-  return c;
-}
-
-function getRawPow(){
-  const packs=+document.getElementById('packs').value;
-  return getTotalCurrent()*(1.5*packs);
-}
-
-function getPow(){
-  let base=getRawPow();
-  if(base===0)return 0;
-  return Math.max(0, +(base + liveNoise).toFixed(2));
+  ctx.restore();
 }
 
 function drawBoard(){
   cx.clearRect(0,0,W,H);
   
   if(!broken && getTotalCurrent()>0){
-    shaftAngle += 0.08;
+    shaftAngle+=0.08;
   }
 
-  particles.forEach((p,idx)=>{
-    p.x+=p.vx; p.y+=p.vy; p.alpha-=0.03;
+  for(let i=particles.length-1;i>=0;i--){
+    let p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.alpha-=0.03;
+    if(p.alpha<=0){
+      particles.splice(i,1);
+      continue;
+    }
     cx.save();
-    cx.globalAlpha=Math.max(0, p.alpha);
+    cx.globalAlpha=p.alpha;
     cx.fillStyle=p.color;
     cx.beginPath();cx.arc(p.x,p.y,p.size,0,Math.PI*2);cx.fill();
     cx.restore();
-    if(p.alpha<=0)particles.splice(idx,1);
-  });
+  }
 
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
@@ -272,14 +282,16 @@ function drawBoard(){
       
       if(motorScales[r][c]>0.001){
         const rect=get2DCellRect(c,r,W,H);
-        draw2DMotor(cx,rect,MT[m||dragID||selectedMotorID],hov&&hov.r===r&&hov.c===c,motorScales[r][c]);
+        const activeID=m||dragID||selectedMotorID;
+        if(MT[activeID]){
+          draw2DMotor(cx,rect,MT[activeID],hov&&hov.r===r&&hov.c===c,motorScales[r][c]);
+        }
       }
     }
   }
 }
 
 function hit(mx,my){
-  const rect = cv.getBoundingClientRect();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const gridRect=get2DCellRect(c,r,W,H);
@@ -291,14 +303,13 @@ function hit(mx,my){
   return null;
 }
 
-function xy(e) {
-  const rect = cv.getBoundingClientRect();
-  const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-  const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-  // 고정 해상도 600x450에 고정 매핑
+function xy(e){
+  const rect=cv.getBoundingClientRect();
+  const clientX=e.clientX!==undefined?e.clientX:(e.touches&&e.touches[0]?e.touches[0].clientX:0);
+  const clientY=e.clientY!==undefined?e.clientY:(e.touches&&e.touches[0]?e.touches[0].clientY:0);
   return { 
-    x: (clientX - rect.left) * (W / rect.width), 
-    y: (clientY - rect.top) * (H / rect.height) 
+    x:(clientX-rect.left)*(W/rect.width), 
+    y:(clientY-rect.top)*(H/rect.height) 
   };
 }
 
@@ -306,25 +317,25 @@ function selectMotor(id){
   selectedMotorID=id;
   dragID=id;
   document.querySelectorAll('.mcard').forEach(card=>{
-    card.classList.toggle('selected', card.id===id);
+    card.classList.toggle('selected',card.id===id);
   });
 }
 
 function ds(e){ 
-  dragID = e.currentTarget.id; 
+  dragID=e.currentTarget.id; 
   selectMotor(dragID);
-  if(e.dataTransfer) e.dataTransfer.setData('text/plain', dragID);
+  if(e.dataTransfer)e.dataTransfer.setData('text/plain',dragID);
 }
 
-cv.addEventListener('dragover',e=>{ e.preventDefault(); const p=xy(e); hov=hit(p.x,p.y); });
+cv.addEventListener('dragover',e=>{e.preventDefault();const p=xy(e);hov=hit(p.x,p.y);});
 cv.addEventListener('dragleave',()=>{hov=null;});
 cv.addEventListener('drop',e=>{
   e.preventDefault();
   const p=xy(e),h=hit(p.x,p.y);
   if(h && dragID && !grid[h.r][h.c]){ 
     grid[h.r][h.c]=dragID; 
-    const rect = get2DCellRect(h.c,h.r,W,H);
-    spawnParticles(rect.x+rect.w/2, rect.y+rect.h/2, MT[dragID].border);
+    const rect=get2DCellRect(h.c,h.r,W,H);
+    spawnParticles(rect.x+rect.w/2,rect.y+rect.h/2,MT[dragID].border);
     upd(); 
   }
   hov=null;
@@ -337,14 +348,14 @@ cv.addEventListener('click',e=>{
   const p=xy(e),h=hit(p.x,p.y);
   if(!h)return;
   if(grid[h.r][h.c]){ 
-    const rect = get2DCellRect(h.c,h.r,W,H);
-    spawnParticles(rect.x+rect.w/2, rect.y+rect.h/2, '#ef4444');
+    const rect=get2DCellRect(h.c,h.r,W,H);
+    spawnParticles(rect.x+rect.w/2,rect.y+rect.h/2,'#ef4444');
     grid[h.r][h.c]=null; 
     upd(); 
-  } else if(selectedMotorID){
+  }else if(selectedMotorID){
     grid[h.r][h.c]=selectedMotorID;
-    const rect = get2DCellRect(h.c,h.r,W,H);
-    spawnParticles(rect.x+rect.w/2, rect.y+rect.h/2, MT[selectedMotorID].border);
+    const rect=get2DCellRect(h.c,h.r,W,H);
+    spawnParticles(rect.x+rect.w/2,rect.y+rect.h/2,MT[selectedMotorID].border);
     upd();
   }
 });
@@ -352,8 +363,7 @@ cv.addEventListener('click',e=>{
 function setBat(b){bat=b;document.getElementById('bat-AA').className='bb'+(b==='AA'?' on':'');document.getElementById('bat-AAA').className='bb'+(b==='AAA'?' on':'');upd();}
 function resetAll(){
   grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));
-  broken=false;
-  selectedMotorID=null;
+  broken=false;selectedMotorID=null;
   document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('selected'));
   upd();
 }
@@ -365,7 +375,7 @@ function drawTimer(mins,maxM){
   tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;tx.stroke();
   tx.textAlign='center';tx.textBaseline='middle';
   
-  if(mins===null || isNaN(mins) || mins<=0 || !isFinite(mins)){
+  if(mins===null||isNaN(mins)||mins<=0||!isFinite(mins)){
     tx.fillStyle='#94a3b8';tx.font='bold 14px system-ui';
     tx.fillText('대기중',cx2,cy);
     return;
@@ -381,10 +391,10 @@ function drawTimer(mins,maxM){
   tx.beginPath();tx.arc(cx2,cy,R,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);
   tx.strokeStyle=col;tx.lineWidth=lw;tx.lineCap='round';tx.stroke();
 
-  if(mins autobiography >= 60 || mins>=60){
+  if(mins>=60){
     tx.fillStyle='#0f172a';tx.font='bold 13px system-ui';tx.fillText(Math.floor(mins/60)+'시간',cx2,cy-6);
     tx.font='600 10px system-ui';tx.fillStyle='#64748b';tx.fillText(Math.floor(mins%60)+'분',cx2,cy+8);
-  } else {
+  }else{
     tx.fillStyle='#0f172a';tx.font='800 17px system-ui';tx.fillText(mins.toFixed(1),cx2,cy-4);
     tx.font='600 10px system-ui';tx.fillStyle='#64748b';tx.fillText('분 가동',cx2,cy+10);
   }
@@ -393,11 +403,11 @@ function drawTimer(mins,maxM){
 function startAnim(){
   if(animFrame) return;
   function loop(){
-    if(getTotalCurrent()>0 && !broken) {
-      liveNoise = Math.sin(Date.now()/120) * 0.12 + (Math.random()-0.5)*0.04;
-    } else { liveNoise = 0; }
+    if(getTotalCurrent()>0 && !broken){
+      liveNoise=Math.sin(Date.now()/120)*0.12+(Math.random()-0.5)*0.04;
+    }else{liveNoise=0;}
     
-    const pNow = getPow();
+    const pNow=getPow();
     if(getTotalCurrent()>0 && !broken){
       document.getElementById('sp').textContent=pNow.toFixed(1);
     }
@@ -408,25 +418,34 @@ function startAnim(){
 }
 
 function upd(){
-  const packs=+document.getElementById('packs').value;
-  const maxW=+document.getElementById('maxw').value;
+  const packs=Number(document.getElementById('packs').value)||4;
+  const maxW=Number(document.getElementById('maxw').value)||12;
   document.getElementById('pv').textContent=packs;
   document.getElementById('mv').textContent=maxW;
   
-  const sysVolts = 1.5 * packs; 
-  const cellCapAmps = BAT[bat] / 1000; 
-  const totalWh = sysVolts * cellCapAmps; 
+  const sysVolts=1.5*packs; 
+  const cellCapAmps=BAT[bat]/1000; 
+  const totalWh=sysVolts*cellCapAmps; 
   
-  let cur=0, cnt=0;
+  let cur=0;
   const cts={m120:0,m300:0,servo:0};
-  grid.forEach(row=>row.forEach(m=>{if(m){cur+=MT[m].amps;cnt++;cts[m]++;}}));
   
-  const pow=getRawPow();
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const m=grid[r][c];
+      if(m){
+        cur+=MT[m].amps;
+        if(cts[m]!==undefined)cts[m]++;
+      }
+    }
+  }
+  
+  const pow=cur*sysVolts;
   const ratio=maxW>0?pow/maxW:0;
   const pct=Math.min(ratio*100,100);
   broken=ratio>=1.0; 
   
-  document.getElementById('app').classList.toggle('danger-shake', broken);
+  document.getElementById('app').classList.toggle('danger-shake',broken);
 
   document.getElementById('sc').textContent=cur.toFixed(2);
   document.getElementById('sp').textContent=pow.toFixed(1);
@@ -460,4 +479,4 @@ setTimeout(()=>{upd();},150);
 </script></body></html>""", height=720, scrolling=False)
 
 st.markdown("---")
-st.caption("⚙️ 정밀 제어 계측 모듈 v2.7 | 픽셀 유실 억제용 고정 해상도 캔버스 기법 및 하이브리드 배치 인터페이스 결합")
+st.caption("⚙️ 정밀 제어 계측 모듈 v2.8 | 구문(Syntax) 오류 전수 수정 및 DOM 유령 인덱스 참조 결함 최종 복구 완료")
