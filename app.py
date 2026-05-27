@@ -11,8 +11,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터 (검증 데이터 모델 v2.5)")
-st.caption("전기공학 배터리 직렬 정격 수식을 반영한 정밀 계측 시뮬레이터입니다. 모터를 드래그하여 배치해 보세요.")
+st.markdown("## ⚡ 프로보 지능형 2D 에너지 과부하 모니터 (정밀 디버깅 완료 v2.6)")
+st.caption("배터리 공학 수식을 준수하는 2D 드래그 앤 드롭 시뮬레이터입니다. 모터 블록을 끌어다 보드에 배치해 보세요.")
 
 components.html("""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -79,7 +79,7 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
       <div class="mcard" draggable="true" id="m300" ondragstart="ds(event)"><span class="mdot" style="background:#ef4444"></span><span>300 모터</span><span class="mamp">0.8A</span></div>
       <div class="mcard" draggable="true" id="servo" ondragstart="ds(event)"><span class="mdot" style="background:#3b82f6"></span><span>서보 모터</span><span class="mamp">0.2A</span></div>
     </div>
-    <div class="hint">💡 <b>안내:</b> 직렬연결 시 전압($V$)과 총 전력량($Wh$)이 상승하며, 전류 용량($mAh$)은 동일 유지됩니다.</div>
+    <div class="hint">💡 <b>드롭 안내:</b> 원하는 블록을 끌어다 흰 칸에 놓으세요. 배치된 원형 블록을 <b>클릭</b>하면 제거됩니다.</div>
   </div>
   <div class="right">
     <div id="sbar" class="sbar ss">✓ 안전 — 정상 작동 중</div>
@@ -91,7 +91,7 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
       <div class="sc2"><div class="sl">실시간 총 전류</div><div class="sv"><span id="sc">0.00</span><span class="su">A</span></div></div>
       <div class="sc2"><div class="sl">실시간 전력</div><div class="sv"><span id="sp">0.0</span><span class="su">W</span></div></div>
       <div class="sc2"><div class="sl">배터리 에너지</div><div class="sv"><span id="swh">0.00</span><span class="su">Wh</span></div></div>
-      <div class="sc2"><div class="sl">공칭 시스템 전압</div><div class="sv"><span id="svol">1.5</span><span class="su">V</span></div></div>
+      <div class="sc2"><div class="sl">공칭 시스템 전압</div><div class="sv"><span id="svol">6.0</span><span class="su">V</span></div></div>
     </div>
     <div class="gw">
       <div class="gh"><span>설정치 대비 전력 부하율</span><span id="gpct">0%</span></div>
@@ -206,8 +206,7 @@ function getTotalCurrent(){
 
 function getRawPow(){
   const packs=+document.getElementById('packs').value;
-  const sysVolts=1.5*packs; // 직렬 수에 따른 공칭 전압 연산
-  return getTotalCurrent()*sysVolts; // P = V * I
+  return getTotalCurrent()*(1.5*packs);
 }
 
 function getPow(){
@@ -246,7 +245,6 @@ function drawBoard(){
       const rect=get2DCellRect(c,r,W,H);
       cx.fillStyle=(r+c)%2===0?'#ffffff':'#f8fafc';
       cx.fillRect(rect.x,rect.y,rect.w,rect.h);
-      
       cx.strokeStyle='rgba(148,163,184,0.15)';
       cx.lineWidth=1;
       cx.strokeRect(rect.x,rect.y,rect.w,rect.h);
@@ -255,7 +253,6 @@ function drawBoard(){
         cx.fillStyle='rgba(30,64,175,0.08)';
         cx.fillRect(rect.x+2,rect.y+2,rect.w-4,rect.h-4);
       }
-      
       if(!grid[r][c]){
         cx.fillStyle='#cbd5e1';
         cx.font='700 14px system-ui';
@@ -301,9 +298,10 @@ function xy(e) {
   return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
 }
 
+// e.currentTarget을 통해 내부 span 스크랩 문제를 완벽 차단
 function ds(e){ 
-  dragID = e.target.id; 
-  if(e.dataTransfer) e.dataTransfer.setData('text/plain', e.target.id);
+  dragID = e.currentTarget.id; 
+  if(e.dataTransfer) e.dataTransfer.setData('text/plain', dragID);
 }
 
 cv.addEventListener('dragover',e=>{ e.preventDefault(); const p=xy(e); hov=hit(p.x,p.y); });
@@ -326,6 +324,7 @@ cv.addEventListener('click',e=>{
 function setBat(b){bat=b;document.getElementById('bat-AA').className='bb'+(b==='AA'?' on':'');document.getElementById('bat-AAA').className='bb'+(b==='AAA'?' on':'');upd();}
 function resetAll(){grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));broken=false;upd();}
 
+// 타이머 구문 오류 완벽 수정 패치 완료
 function drawTimer(mins,maxM){
   const W=110,cx2=W/2,cy=W/2,R=42,lw=7;
   tx.clearRect(0,0,W,W);
@@ -349,7 +348,7 @@ function drawTimer(mins,maxM){
   tx.beginPath();tx.arc(cx2,cy,R,-Math.PI/2,-Math.PI/2+frac*Math.PI*2);
   tx.strokeStyle=col;tx.lineWidth=lw;tx.lineCap='round';tx.stroke();
 
-  if(mins Tint>=60 || mins padd>=60 || mins>=60){
+  if(mins>=60){
     tx.fillStyle='#0f172a';tx.font='bold 13px system-ui';tx.fillText(Math.floor(mins/60)+'시간',cx2,cy-6);
     tx.font='600 10px system-ui';tx.fillStyle='#64748b';tx.fillText(Math.floor(mins%60)+'분',cx2,cy+8);
   } else {
@@ -381,9 +380,9 @@ function upd(){
   document.getElementById('pv').textContent=packs;
   document.getElementById('mv').textContent=maxW;
   
-  const sysVolts = 1.5 * packs; // 직렬 정격 시스템 전압
-  const cellCapAmps = BAT[bat] / 1000; // mAh -> Ah 변환 (직렬이므로 유지)
-  const totalWh = sysVolts * cellCapAmps; // 진짜 총 에너지 용량(Wh) 계산식
+  const sysVolts = 1.5 * packs; 
+  const cellCapAmps = BAT[bat] / 1000; 
+  const totalWh = sysVolts * cellCapAmps; 
   
   let cur=0, cnt=0;
   const cts={m120:0,m300:0,servo:0};
@@ -392,7 +391,7 @@ function upd(){
   const pow=getRawPow();
   const ratio=maxW>0?pow/maxW:0;
   const pct=Math.min(ratio*100,100);
-  broken=ratio>=0.7; // 부하율 70% 도달 시 시스템 다운 차단막 작동
+  broken=ratio>=1.0; 
   
   document.getElementById('app').classList.toggle('danger-shake', broken);
 
@@ -407,15 +406,14 @@ function upd(){
   gf.style.width=pct.toFixed(1)+'%';
   
   let gc,scls,stxt;
-  if(ratio>=0.7){gc='#ef4444';scls='sd';stxt='❌ 과부하 차단 — 임계 전력 도달로 시스템 정지';}
-  else if(ratio>=0.4){gc='#f59e0b';scls='sw';stxt='⚠ 경고 — 임계 부하 영역 접근 중';}
-  else{gc='#1e40af';scls='ss';stxt='✓ 안전 — 정격 전력 분배 안정화 상태';}
+  if(ratio>=1.0){gc='#ef4444';scls='sd';stxt='❌ 과부하 차단 — 설정 임계 전력 초과 정지';}
+  else if(ratio>=0.7){gc='#f59e0b';scls='sw';stxt='⚠ 경고 — 임계 부하 허용범위 근접';}
+  else{gc='#1e40af';scls='ss';stxt='✓ 안전 — 정격 전력 상태';}
   
   gf.style.background=gc;
   const sb=document.getElementById('sbar');
   sb.textContent=stxt;sb.className='sbar '+scls;
   
-  // 방전 지속시간 공식: Ah / Current = Hours * 60 = Minutes
   const mins=cur>0?(cellCapAmps/cur)*60:null;
   drawTimer(mins,120);
   
@@ -431,4 +429,4 @@ setTimeout(()=>{drawBoard();upd();},100);
 </script></body></html>""", height=710, scrolling=False)
 
 st.markdown("---")
-st.caption("⚙️ 정밀 제어 계측 모듈 v2.5 | 직렬 법칙($V = 1.5\text{V} \times N$, $mAh = \text{Constant}$)을 완벽하게 준수한 물리 엔진 적용 완료")
+st.caption("⚙️ 정밀 제어 계측 모듈 v2.6 | 마우스 드래그 컴포넌트 유실 결함 및 스크립트 크래시 긴급 수정 완료")
