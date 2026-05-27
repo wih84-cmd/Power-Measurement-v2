@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="프로보 에너지 모니터 Pro", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
 
-# 깔끔한 앱 배경 세팅
+# 깔끔하고 정돈된 대시보드 스타일 지정
 st.markdown("""
 <style>
     .block-container {padding-top: 1.5rem; max-width: 1200px}
@@ -13,23 +13,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("## ⚡ 프로보 지능형 에너지 과부하 모니터")
-st.caption("모터 블록을 실시간으로 배치하고, 기계 구조의 실시간 부하 및 유동 전력을 확인하세요. (과부하 70% 이상 시 차단 고장)")
+st.caption("아래의 모터 블록을 마우스로 드래그하여 보드의 빈 슬롯에 드롭하세요. (설치 후 클릭하면 제거, 과부하 70% 이상 시 차단 고장)")
 
 components.html("""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Pretendard','Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;-webkit-user-select:none;user-select:none}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;-webkit-user-select:none;user-select:none}
 .app{display:grid;grid-template-columns:1fr 310px;gap:20px;background:#ffffff;border-radius:24px;padding:20px;box-shadow:0 20px 40px -15px rgba(15,23,42,0.08);border:1px solid #e2e8f0;height:670px}
 .left{display:flex;flex-direction:column;background:#fdfdfd;border-radius:18px;border:1px solid #f1f5f9;padding:16px;position:relative}
 .right{display:flex;flex-direction:column;gap:12px;padding:4px;overflow-y:auto;overflow-x:hidden}
 .sec{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#475569;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .sec::before{content:'';display:inline-block;width:6px;height:6px;background:#6366f1;border-radius:50%}
 canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;background:radial-gradient(circle at 50% 50%, #f8fafc 0%, #edf2f7 100%);min-height:360px;transition:transform 0.1s}
-.palette{display:flex;gap:8px;margin-top:12px;background:#f1f5f9;padding:6px;border-radius:12px}
-.mbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 8px;border-radius:9px;border:1px solid transparent;background:transparent;font-size:11px;font-weight:700;cursor:pointer;color:#475569;transition:all .2s cubic-bezier(0.4,0,0.2,1)}
-.mbtn:hover{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.03)}
-.mbtn.on{background:#fff;border-color:#e2e8f0;box-shadow:0 4px 12px rgba(99,102,241,0.12)}
+.palette-title{font-size:11px;font-weight:700;color:#64748b;margin:12px 0 4px 4px;display:flex;align-items:center;gap:4px}
+.palette{display:flex;gap:10px;background:#f1f5f9;padding:10px;border-radius:14px;border:1px dashed #cbd5e1}
+.mcard{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;font-size:11px;font-weight:700;cursor:grab;color:#475569;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);transition:all .2s cubic-bezier(0.4,0,0.2,1)}
+.mcard:hover{transform:translateY(-2px);box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);border-color:#cbd5e1}
+.mcard:active{cursor:grabbing}
 .mdot{width:8px;height:8px;border-radius:50%}
 .mamp{font-size:10px;color:#94a3b8;font-weight:500}
 .hint{font-size:11px;color:#64748b;margin-top:8px;text-align:center;background:#f8fafc;padding:6px;border-radius:6px}
@@ -46,7 +47,7 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
 .su{font-size:10px;color:#94a3b8;font-weight:500;margin-left:2px}
 .gw{display:flex;flex-direction:column;gap:5px;background:#f8fafc;padding:10px;border-radius:12px;border:1px solid #e2e8f0}
 .gh{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#334155}
-.gt{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;position:relative}
+.gt{height:8px;background:#e2e8f0;border-radius99px;overflow:hidden;position:relative}
 .gf{height:100%;border-radius:99px;transition:width .2s ease,background .3s}
 .row{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:#475569}
 .row input[type=range]{flex:1;accent-color:#6366f1;cursor:pointer;height:4px}
@@ -63,23 +64,25 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
 .rbtn{width:100%;padding:10px;border:1px solid #fca5a5;border-radius:10px;background:#fff;font-size:11px;font-weight:700;cursor:pointer;color:#dc2626;transition:all .2s;margin-top:auto}
 .rbtn:hover{background:#fef2f2;transform:scale(0.98)}
 
+/* 과부하 발생 시 전체 UI 흔들림 애니메이션 효과 */
 @keyframes shake {
   0%, 100% { transform: translate(0, 0); }
-  20%, 60% { transform: translate(-2px, 1px); }
-  40%, 80% { transform: translate(2px, -1px); }
+  20%, 60% { transform: translate(-1.5px, 1px); }
+  40%, 80% { transform: translate(1.5px, -1px); }
 }
 .app.danger-shake{animation: shake 0.15s infinite;}
 </style></head><body>
 <div class="app" id="app">
   <div class="left">
-    <div class="sec">로봇 메인 보드 — 그리드 스페이스</div>
-    <canvas id="cv"></canvas>
+    <div class="sec">로봇 메인 컴퓨터 제어 보드</div>
+    <canvas id="cv" dropzone="copy"></canvas>
+    <div class="palette-title">📦 드래그형 모터 소스 컴포넌트</div>
     <div class="palette">
-      <button class="mbtn on" id="b-m120" onclick="pick('m120')"><span class="mdot" style="background:#22c55e"></span><span>120 모터</span><span class="mamp">0.4A</span></button>
-      <button class="mbtn" id="b-m300" onclick="pick('m300')"><span class="mdot" style="background:#ef4444"></span><span>300 모터</span><span class="mamp">0.8A</span></button>
-      <button class="mbtn" id="b-servo" onclick="pick('servo')"><span class="mdot" style="background:#3b82f6"></span><span>서보 모터</span><span class="mamp">0.2A</span></button>
+      <div class="mcard" draggable="true" id="m120" ondragstart="ds(event)"><span class="mdot" style="background:#22c55e"></span><span>120 모터</span><span class="mamp">0.4A</span></div>
+      <div class="mcard" draggable="true" id="m300" ondragstart="ds(event)"><span class="mdot" style="background:#ef4444"></span><span>300 모터</span><span class="mamp">0.8A</span></div>
+      <div class="mcard" draggable="true" id="servo" ondragstart="ds(event)"><span class="mdot" style="background:#3b82f6"></span><span>서보 모터</span><span class="mamp">0.2A</span></div>
     </div>
-    <div class="hint">💡 보드의 빈 셀을 누르면 모터가 배치되고, 배치된 모터를 다시 누르면 해제됩니다.</div>
+    <div class="hint">💡 <b>드래그 앤 드롭:</b> 모터를 끌어서 보드 슬롯에 놓으세요. 배치된 블록을 <b>클릭</b>하면 제거됩니다.</div>
   </div>
   <div class="right">
     <div id="sbar" class="sbar ss">✓ 정상 작동 보증 상태</div>
@@ -90,7 +93,7 @@ canvas#cv{display:block;width:100%;flex:1;border-radius:14px;cursor:pointer;back
     <div class="sgrid">
       <div class="sc2"><div class="sl">실시간 전류</div><div class="sv"><span id="sc">0.00</span><span class="su">A</span></div></div>
       <div class="sc2"><div class="sl">유동 전력량</div><div class="sv"><span id="sp">0.0</span><span class="su">W</span></div></div>
-      <div class="sc2"><div class="sl">배터리 용량</div><div class="sv"><span id="scap">2500</span><span class="su">mAh</span></div></div>
+      <div class="sc2"><div class="sl">배터리 용량</div><div class="sv"><span id="scap">2,500</span><span class="su">mAh</span></div></div>
       <div class="sc2"><div class="sl">장착 모터 수</div><div class="sv"><span id="scnt">0</span><span class="su">개</span></div></div>
     </div>
     <div class="gw">
@@ -120,10 +123,13 @@ const MT={
 };
 const BAT={AA:2500,AAA:1200};
 let grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));
+
+// 실시간 스프링/스케일 애니메이션 보간을 위한 배열 변수
 let motorScales=Array(ROWS).fill(null).map(()=>Array(COLS).fill(0));
-let chosen='m120',bat='AA',hov=null,broken=false;
+
+let dragID=null,bat='AA',hov=null,broken=false;
 let liveNoise=0;
-let machineGears=0;
+let generatorGears=0;
 let particles=[];
 
 const cv=document.getElementById('cv');
@@ -139,16 +145,20 @@ function iso(col,row,W){
   return{x:ox+(col-row)*(CW/2),y:oy+(col+row)*(CH/2),cw:CW,ch:CH};
 }
 
+// 고성능 2D Canvas 렌더링 내에 실시간 애니메이션 가미 (회전축, 고장 파괴선)
 function drawMotorShape(cx2,x,y,cw,ch,m,isHov,scale){
   const hw=cw/2*scale,hh=ch/2*scale,bh=m.height*scale;
   if(scale<=0.01)return;
   cx2.save();
   cx2.translate(x,y);
   
+  // 마우스 호버(드래그 오버 포함) 시 실시간 살짝 위로 들어올려지는 붕 뜬 시각 효과 유도
+  if(isHov && !broken) cx2.translate(0, -5);
+
   cx2.beginPath();
   cx2.moveTo(0,-hh);cx2.lineTo(hw,0);cx2.lineTo(0,hh);cx2.lineTo(-hw,0);
   cx2.closePath();cx2.fillStyle=m.top;cx2.fill();
-  if(isHov){cx2.fillStyle='rgba(255,255,255,0.3)';cx2.fill();}
+  if(isHov){cx2.fillStyle='rgba(255,255,255,0.25)';cx2.fill();}
   
   cx2.beginPath();
   cx2.moveTo(-hw,0);cx2.lineTo(0,hh);cx2.lineTo(0,hh+bh);cx2.lineTo(-hw,bh);
@@ -158,13 +168,15 @@ function drawMotorShape(cx2,x,y,cw,ch,m,isHov,scale){
   cx2.moveTo(hw,0);cx2.lineTo(0,hh);cx2.lineTo(0,hh+bh);cx2.lineTo(hw,bh);
   cx2.closePath();cx2.fillStyle=m.side;cx2.fill();
   
+  // 모터 중앙 회전 기믹 축 샤프트부 생성
   const cr=hw*0.35;
   cx2.beginPath();cx2.arc(0,0,cr,0,Math.PI*2);
   cx2.fillStyle='rgba(255,255,255,0.4)';cx2.fill();
   
   cx2.save();
   if(!broken && getRawPow()>0){
-    cx2.rotate((Date.now()/150)*(m.amps*2));
+    // 소모 전력 수치 비례 가변 실시간 틱 회전 로직
+    cx2.rotate((Date.now()/120)*(m.amps*2.5));
   }
   cx2.beginPath();cx2.rect(-2,-2,4,4);
   cx2.fillStyle='#1e293b';cx2.fill();
@@ -175,8 +187,9 @@ function drawMotorShape(cx2,x,y,cw,ch,m,isHov,scale){
   cx2.textAlign='center';cx2.textBaseline='middle';
   cx2.fillText(m.label,0,-hh*0.1);
   
+  // 고장 상태 크랙 드로잉
   if(broken){
-    cx2.fillStyle='rgba(220,38,38,0.2)';cx2.fill();
+    cx2.fillStyle='rgba(220,38,38,0.15)';cx2.fill();
     cx2.strokeStyle='#ef4444';cx2.lineWidth=2;
     cx2.beginPath();cx2.moveTo(-hw*0.4,-hh*0.4);cx2.lineTo(hw*0.4,hh*0.4);cx2.stroke();
     cx2.beginPath();cx2.moveTo(hw*0.4,-hh*0.4);cx2.lineTo(-hw*0.4,hh*0.4);cx2.stroke();
@@ -197,13 +210,14 @@ function getPow(){
 
 function getMaxW(){return+document.getElementById('maxw').value||15;}
 
+// 하단 발전기 애니메이션 (연기 파티클 및 과부하 스파크 연출)
 function drawComplexMachine(cx2,W,H){
   const mx=W*0.5,my=H-65;
   const isOperating=!broken && getRawPow()>0;
   
   if(isOperating) {
-    machineGears += (getRawPow()*0.05);
-    if(Math.random()<0.15) {
+    generatorGears += (getRawPow()*0.04);
+    if(Math.random()<0.18) {
       particles.push({x:mx-25+Math.random()*10,y:my-25,vx:-0.2+Math.random()*0.4,vy:-1-Math.random(),alpha:1,size:3+Math.random()*4,type:'smoke'});
     }
   }
@@ -235,7 +249,7 @@ function drawComplexMachine(cx2,W,H){
 
   cx2.save();
   cx2.translate(mx-22,my+5);
-  if(isOperating)cx2.rotate(machineGears);
+  if(isOperating)cx2.rotate(generatorGears);
   cx2.strokeStyle='#94a3b8';cx2.lineWidth=2;
   cx2.beginPath();cx2.arc(0,0,10,0,Math.PI*2);cx2.stroke();
   for(let i=0;i<6;i++){
@@ -250,8 +264,6 @@ function drawComplexMachine(cx2,W,H){
 
   cx2.fillStyle='#64748b';
   cx2.fillRect(mx-30,my-28,12,14);
-  cx2.fillStyle='#475569';
-  cx2.fillRect(mx-33,my-31,18,4);
 
   cx2.fillStyle='#475569';cx2.font='bold 11px system-ui';cx2.textAlign='center';
   cx2.fillText(broken?'SYSTEM FAIL (과부하)':isOperating?'GENERATOR RUNNING':'STANDBY',mx,my+42);
@@ -264,20 +276,17 @@ function drawBoard(){
   
   cx.clearRect(0,0,W,H);
   
+  // 바닥 격자판 타일 빌드
   for(let r=ROWS-1;r>=0;r--){
     for(let c=COLS-1;c>=0;c--){
       const p=iso(c,r,W),hw=p.cw/2,hh=p.ch/2;
-      
       cx.beginPath();
       cx.moveTo(p.x,p.y-hh);cx.lineTo(p.x+hw,p.y);cx.lineTo(p.x,p.y+hh);cx.lineTo(p.x-hw,p.y);
       cx.closePath();
+      cx.fillStyle='#ffffff';cx.fill();
+      cx.strokeStyle='rgba(99,102,241,0.08)';cx.lineWidth=1;cx.stroke();
       
-      cx.fillStyle='#ffffff';
-      cx.fill();
-      cx.strokeStyle='rgba(99,102,241,0.08)';
-      cx.lineWidth=1;
-      cx.stroke();
-      
+      // 드래그 또는 마우스 호버 타겟 시 하이라이트 투명 레이어
       if(hov&&hov.r===r&&hov.c===c&&!grid[r][c]){
         cx.fillStyle='rgba(99,102,241,0.15)';cx.fill();
       }
@@ -288,19 +297,20 @@ function drawBoard(){
     }
   }
   
+  // 타일 위 모터 개체 유동 렌더링
   for(let r=ROWS-1;r>=0;r--){
     for(let c=COLS-1;c>=0;c--){
       const m=grid[r][c];
-      let target=m?1:0;
-      motorScales[r][c]+=(target-motorScales[r][c])*0.22; 
+      let targetScale=m?1:0;
+      // 스프링 스무딩 배율 애니메이션 계산
+      motorScales[r][c]+=(targetScale-motorScales[r][c])*0.22; 
       
       if(motorScales[r][c]>0.001){
         const p=iso(c,r,W);
-        drawMotorShape(cx,p.x,p.y,p.cw,p.ch,MT[m||chosen],hov&&hov.r===r&&hov.c===c,motorScales[r][c]);
+        drawMotorShape(cx,p.x,p.y,p.cw,p.ch,MT[m||dragID],hov&&hov.r===r&&hov.c===c,motorScales[r][c]);
       }
     }
   }
-  
   drawComplexMachine(cx,W,H);
 }
 
@@ -319,19 +329,25 @@ function xy(e){
   return{x:(cl.clientX-rect.left)*sx,y:(cl.clientY-rect.top)*sy};
 }
 
+// 오리지널 드래그 앤 드롭 트리거 자바스크립트 연동 이벤트
+function ds(e){ dragID = e.target.id; }
+cv.addEventListener('dragover',e=>{e.preventDefault();const p=xy(e);hov=hit(p.x,p.y);});
+cv.addEventListener('dragleave',()=>{hov=null;});
+cv.addEventListener('drop',e=>{
+  e.preventDefault();
+  const p=xy(e),h=hit(p.x,p.y);
+  if(h && dragID && !grid[h.r][h.c]){ grid[h.r][h.c]=dragID; upd(); }
+  hov=null;
+});
+
 cv.addEventListener('mousemove',e=>{const p=xy(e);hov=hit(p.x,p.y);cv.style.cursor=hov?'pointer':'default';});
 cv.addEventListener('mouseleave',()=>{hov=null;});
-cv.addEventListener('click',e=>{const p=xy(e),h=hit(p.x,p.y);if(!h)return;grid[h.r][h.c]=grid[h.r][h.c]===chosen?null:chosen;upd();});
-cv.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0],rect=cv.getBoundingClientRect(),sx=cv.width/rect.width,sy=cv.height/rect.height,h=hit((t.clientX-rect.left)*sx,(t.clientY-rect.top)*sy);if(!h)return;grid[h.r][h.c]=grid[h.r][h.c]===chosen?null:chosen;upd();},{passive:false});
+cv.addEventListener('click',e=>{
+  const p=xy(e),h=hit(p.x,p.y);
+  if(!h)return;
+  if(grid[h.r][h.c]){ grid[h.r][h.c]=null; upd(); }
+});
 
-function pick(k){
-  chosen=k;
-  ['m120','m300','servo'].forEach(id=>{
-    const b=document.getElementById('b-'+id);
-    b.classList.toggle('on',id===k);
-    b.style.borderColor=id===k?MT[k].col:'transparent';
-  });
-}
 function setBat(b){bat=b;document.getElementById('bat-AA').className='bb'+(b==='AA'?' on':'');document.getElementById('bat-AAA').className='bb'+(b==='AAA'?' on':'');upd();}
 function resetAll(){grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));broken=false;upd();}
 
@@ -339,7 +355,7 @@ function drawTimer(mins,maxM){
   const W=110,cx2=W/2,cy=W/2,R=42,lw=7;
   tx.clearRect(0,0,W,W);
   tx.beginPath();tx.arc(cx2,cy,R,0,Math.PI*2);
-  tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;stroke();
+  tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;tx.stroke();
   if(mins!==null&&maxM>0){
     const frac=Math.min(mins/maxM,1);
     const col=frac>0.6?'#10b981':frac>0.25?'#f59e0b':'#ef4444';
@@ -359,6 +375,7 @@ function drawTimer(mins,maxM){
 }
 
 function startAnim(){if(animFrame)return;function loop(){
+  // 가동 상태일 때 미세 저항 및 전력 오차 노이즈 반영 시뮬레이션 구현
   if(getRawPow()>0 && !broken) {
     liveNoise = Math.sin(Date.now()/120) * 0.18 + (Math.random()-0.5)*0.08;
   } else {
@@ -384,6 +401,7 @@ function upd(){
   const pow=getRawPow(),ratio=maxW>0?pow/maxW:0,pct=Math.min(ratio*100,100);
   broken=ratio>=0.7;
   
+  // 과부하 걸리면 전체 대시보드 구조에 떨림 CSS 클래스 연동
   document.getElementById('app').classList.toggle('danger-shake', broken);
 
   document.getElementById('sc').textContent=cur.toFixed(2);
@@ -405,9 +423,9 @@ function upd(){
   startAnim();
 }
 
-pick('m120');
 new ResizeObserver(()=>{drawBoard();}).observe(cv);
 setTimeout(()=>{drawBoard();upd();},100);
 </script></body></html>""", height=710, scrolling=False)
+
 st.markdown("---")
 st.caption("⚙️ 정밀 제어 시스템 | 가동 중 실시간 미세 저항 및 전력 오차 시뮬레이션 활성화 완료")
