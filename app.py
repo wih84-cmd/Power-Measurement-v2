@@ -1,34 +1,3 @@
-제공해주신 Streamlit과 HTML Canvas 기반의 **프로보 에너지 과부하 모니터** 코드를 한 단계 더 발전시켰습니다.
-
-요청하신 **실시간 전력 변화(시뮬레이션), UI/UX 가독성 향상, 부드러운 애니메이션 및 시각 효과, 그리고 기계 이미지(CSS/Canvas 기반 정밀 그래픽)** 요소를 모두 반영하여 코드를 전면 리팩토링했습니다.
-
-### 💡 주요 개선 사항
-
-1. **실시간 동적 전력 변동 (Live Simulation)**
-* 고정된 전류 소모 대신 모터가 실제로 가동 중인 것처럼 **실시간 미세 진동(Noise) 및 부하 변동** 메커니즘을 추가했습니다. 수치와 그래프가 실시간으로 살아 움직입니다.
-
-
-2. **UI/UX 디자인 및 가독성 대폭 향상 (Modern Premium Tech)**
-* 다크/라이트 모드 어디서나 어울리는 유리 모포시즘(Glassmorphism)과 네온 그라데이션 스타일을 적용했습니다.
-* 복잡한 레이아웃을 스코어카드 형태로 명확히 분리하고 폰트 가독성을 높였습니다.
-
-
-3. **고급 애니메이션 추가 (Rich Motion)**
-* 모터 설치 시 튕기는 듯한 **스케일 애니메이션**, 과부하 시 화면 전체가 붉게 흔들리는 **화면 진동(Shake) 효과**가 추가되었습니다.
-
-
-4. **정밀 기계 및 파티클 이미지 구현**
-* 단순 도상 형태였던 발전기 기계를 Canvas 2D 그래픽으로 디테일하게 렌더링(기어 톱니, 연기 파티클 효과, 과부하 스파크 애니메이션 등)하여 시각적 완성도를 극대화했습니다.
-
-
-
----
-
-### 🛠 개선된 전체 소스 코드
-
-아래 코드를 기존 Streamlit 파이썬 파일에 그대로 덮어쓰기하여 실행하시면 됩니다.
-
-```python
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -151,12 +120,10 @@ const MT={
 };
 const BAT={AA:2500,AAA:1200};
 let grid=Array(ROWS).fill(null).map(()=>Array(COLS).fill(null));
-let motorScales=Array(ROWS).fill(null).map(()=>Array(COLS).fill(0)); // 애니메이션용 스케일 트리거
+let motorScales=Array(ROWS).fill(null).map(()=>Array(COLS).fill(0));
 let chosen='m120',bat='AA',hov=null,broken=false;
-let liveNoise=0; // 실시간 파동성 노이즈 값
-let machineGears=0; // 기계 기어 회전각
-
-// 파티클 시스템 정의 (기계 연기 및 스파크)
+let liveNoise=0;
+let machineGears=0;
 let particles=[];
 
 const cv=document.getElementById('cv');
@@ -178,28 +145,23 @@ function drawMotorShape(cx2,x,y,cw,ch,m,isHov,scale){
   cx2.save();
   cx2.translate(x,y);
   
-  // 모터 본체 상부 탑 플레이트
   cx2.beginPath();
   cx2.moveTo(0,-hh);cx2.lineTo(hw,0);cx2.lineTo(0,hh);cx2.lineTo(-hw,0);
   cx2.closePath();cx2.fillStyle=m.top;cx2.fill();
   if(isHov){cx2.fillStyle='rgba(255,255,255,0.3)';cx2.fill();}
   
-  // 좌측 벽면
   cx2.beginPath();
   cx2.moveTo(-hw,0);cx2.lineTo(0,hh);cx2.lineTo(0,hh+bh);cx2.lineTo(-hw,bh);
   cx2.closePath();cx2.fillStyle=m.dark;cx2.fill();
   
-  // 우측 벽면
   cx2.beginPath();
   cx2.moveTo(hw,0);cx2.lineTo(0,hh);cx2.lineTo(0,hh+bh);cx2.lineTo(hw,bh);
   cx2.closePath();cx2.fillStyle=m.side;cx2.fill();
   
-  // 모터 회전축 축소 투영 구현
   const cr=hw*0.35;
   cx2.beginPath();cx2.arc(0,0,cr,0,Math.PI*2);
   cx2.fillStyle='rgba(255,255,255,0.4)';cx2.fill();
   
-  // 회전하는 중심부 기어 핀 연출
   cx2.save();
   if(!broken && getRawPow()>0){
     cx2.rotate((Date.now()/150)*(m.amps*2));
@@ -208,13 +170,11 @@ function drawMotorShape(cx2,x,y,cw,ch,m,isHov,scale){
   cx2.fillStyle='#1e293b';cx2.fill();
   cx2.restore();
 
-  // 정보 텍스트 각인
   cx2.fillStyle='rgba(15,23,42,0.85)';
   cx2.font='bold '+Math.round(cw*0.13)+'px system-ui';
   cx2.textAlign='center';cx2.textBaseline='middle';
   cx2.fillText(m.label,0,-hh*0.1);
   
-  // 과부하로 인한 불타거나 파괴된 오버레이 효과
   if(broken){
     cx2.fillStyle='rgba(220,38,38,0.2)';cx2.fill();
     cx2.strokeStyle='#ef4444';cx2.lineWidth=2;
@@ -232,28 +192,25 @@ function getRawPow(){
 function getPow(){
   let base=getRawPow();
   if(base===0)return 0;
-  // 유동 전력 시뮬레이션: 미세한 삼각파 노이즈 결합
   return +(base + liveNoise).toFixed(2);
 }
 
 function getMaxW(){return+document.getElementById('maxw').value||15;}
 
-// 기계 이미지 및 스팀 이펙트 실시간 시각화
 function drawComplexMachine(cx2,W,H){
   const mx=W*0.5,my=H-65;
   const isOperating=!broken && getRawPow()>0;
   
   if(isOperating) {
     machineGears += (getRawPow()*0.05);
-    if(Math.random()<0.15) { // 파티클 생성
+    if(Math.random()<0.15) {
       particles.push({x:mx-25+Math.random()*10,y:my-25,vx:-0.2+Math.random()*0.4,vy:-1-Math.random(),alpha:1,size:3+Math.random()*4,type:'smoke'});
     }
   }
-  if(broken && Math.random()<0.4) { // 과부하 고장 스파크 파티클
+  if(broken && Math.random()<0.4) {
     particles.push({x:mx-40+Math.random()*80,y:my-30+Math.random()*40,vx:-2+Math.random()*4,vy:-2-Math.random()*3,alpha:1,size:1.5+Math.random()*2,type:'spark'});
   }
 
-  // 파티클 업데이트 및 렌더링
   particles.forEach((p,idx)=>{
     p.x+=p.vx;p.y+=p.vy;p.alpha-=0.02;
     if(p.type==='smoke'){
@@ -266,19 +223,16 @@ function drawComplexMachine(cx2,W,H){
     if(p.alpha<=0)particles.splice(idx,1);
   });
 
-  // 1. 발전기 기계 메인 하우징 몸체 구조 디자인
   cx2.save();
   cx2.shadowBlur=12;
   cx2.shadowColor=broken?'rgba(239,68,68,0.2)':'rgba(148,163,184,0.15)';
   
-  // 하부 그라디언트 베이스
   let grd=cx2.createLinearGradient(mx-50,my,mx+50,my);
   grd.addColorStop(0,'#334155');grd.addColorStop(0.5,'#475569');grd.addColorStop(1,'#1e293b');
   cx2.fillStyle=grd;
   cx2.beginPath();cx2.roundRect(mx-45,my-15,90,40,8);cx2.fill();
   cx2.restore();
 
-  // 2. 내부 연동 회전 기어 인디케이터 (물리 이미지)
   cx2.save();
   cx2.translate(mx-22,my+5);
   if(isOperating)cx2.rotate(machineGears);
@@ -290,18 +244,15 @@ function drawComplexMachine(cx2,W,H){
   }
   cx2.restore();
 
-  // 3. 실시간 출력 상태 LED 미니 매트릭스 
   cx2.fillStyle='#1e293b';cx2.beginPath();cx2.roundRect(mx+10,my-3,28,16,3);cx2.fill();
   cx2.fillStyle=broken?'#ef4444':isOperating?'#10b981':'#64748b';
   cx2.beginPath();cx2.arc(mx+24,my+5,4,0,Math.PI*2);cx2.fill();
 
-  // 4. 배기 파이프 굴뚝 구조
   cx2.fillStyle='#64748b';
   cx2.fillRect(mx-30,my-28,12,14);
   cx2.fillStyle='#475569';
   cx2.fillRect(mx-33,my-31,18,4);
 
-  // 상단 텍스트 레이블 가독성 강화
   cx2.fillStyle='#475569';cx2.font='bold 11px system-ui';cx2.textAlign='center';
   cx2.fillText(broken?'SYSTEM FAIL (과부하)':isOperating?'GENERATOR RUNNING':'STANDBY',mx,my+42);
 }
@@ -313,8 +264,6 @@ function drawBoard(){
   
   cx.clearRect(0,0,W,H);
   
-  // 바닥 아이소메트릭 격자 타일 렌더링
-  const gl='rgba(148,163,184,0.12)';
   for(let r=ROWS-1;r>=0;r--){
     for(let c=COLS-1;c>=0;c--){
       const p=iso(c,r,W),hw=p.cw/2,hh=p.ch/2;
@@ -329,23 +278,19 @@ function drawBoard(){
       cx.lineWidth=1;
       cx.stroke();
       
-      // 마우스 마킹 호버링 이펙트
       if(hov&&hov.r===r&&hov.c===c&&!grid[r][c]){
         cx.fillStyle='rgba(99,102,241,0.15)';cx.fill();
       }
       
-      // 내부 인덱스 넘버 가독성 정돈
       cx.fillStyle='#94a3b8';cx.font='600 '+Math.round(p.cw*0.14)+'px system-ui';
       cx.textAlign='center';cx.textBaseline='middle';
       cx.fillText(r*COLS+c+1,p.x,p.y);
     }
   }
   
-  // 모터 정밀 소팅 순차 레이어 렌더링 + 등장 스케일 애니메이션 처리
   for(let r=ROWS-1;r>=0;r--){
     for(let c=COLS-1;c>=0;c--){
       const m=grid[r][c];
-      // 애니메이션 유동 타겟 스케일 보간법
       let target=m?1:0;
       motorScales[r][c]+=(target-motorScales[r][c])*0.22; 
       
@@ -356,7 +301,6 @@ function drawBoard(){
     }
   }
   
-  // 고도화된 기계 그래픽 및 이펙트 출력
   drawComplexMachine(cx,W,H);
 }
 
@@ -395,7 +339,7 @@ function drawTimer(mins,maxM){
   const W=110,cx2=W/2,cy=W/2,R=42,lw=7;
   tx.clearRect(0,0,W,W);
   tx.beginPath();tx.arc(cx2,cy,R,0,Math.PI*2);
-  tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;tx.stroke();
+  tx.strokeStyle='#f1f5f9';tx.lineWidth=lw;stroke();
   if(mins!==null&&maxM>0){
     const frac=Math.min(mins/maxM,1);
     const col=frac>0.6?'#10b981':frac>0.25?'#f59e0b':'#ef4444';
@@ -414,16 +358,13 @@ function drawTimer(mins,maxM){
   }
 }
 
-// 렌더링 애니메이션 루프 구조
 function startAnim(){if(animFrame)return;function loop(){
-  // 실시간 전력 파동 계산 (Sine 파형 노이즈 부여)
   if(getRawPow()>0 && !broken) {
     liveNoise = Math.sin(Date.now()/120) * 0.18 + (Math.random()-0.5)*0.08;
   } else {
     liveNoise = 0;
   }
   
-  // 실시간 갱신 수치 매칭
   const pNow = getPow();
   if(getRawPow()>0 && !broken){
     document.getElementById('sp').textContent=pNow.toFixed(2);
@@ -441,9 +382,8 @@ function upd(){
   grid.forEach(row=>row.forEach(m=>{if(m){cur+=MT[m].amps;cnt++;cts[m]++;}}));
   
   const pow=getRawPow(),ratio=maxW>0?pow/maxW:0,pct=Math.min(ratio*100,100);
-  broken=ratio>=0.7; // 한계값의 70% 도달 시 브레이커 다운 조건 유지
+  broken=ratio>=0.7;
   
-  // 위험 상황 시 UI 컨테이너 흔들림 애니메이션 클래스 제어
   document.getElementById('app').classList.toggle('danger-shake', broken);
 
   document.getElementById('sc').textContent=cur.toFixed(2);
@@ -471,5 +411,3 @@ setTimeout(()=>{drawBoard();upd();},100);
 </script></body></html>""", height=710, scrolling=False)
 st.markdown("---")
 st.caption("⚙️ 정밀 제어 시스템 | 가동 중 실시간 미세 저항 및 전력 오차 시뮬레이션 활성화 완료")
-
-```
